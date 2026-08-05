@@ -31,11 +31,29 @@ jobs:
       - name: Set up Python
         run: uv python install
 
-      # `make lint` runs `uv lock --check` first, so this fails if the
-      # committed uv.lock doesn't match pyproject.toml, before anything else
-      # gets a chance to resolve/rewrite it.
-      - name: Lint
-        run: make lint
+      - name: Install dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Lint and Format check
+        run: |
+          uv lock --check
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy src tests
+
+      - name: Detect changed docs files
+        id: changes
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            docs:
+              - "docs/**"
+
+      - name: Documentation Lint
+        if: steps.changes.outputs.docs == 'true'
+        run: uv run pymarkdown scan docs
 
   test:
     runs-on: ubuntu-latest
@@ -54,8 +72,11 @@ jobs:
       - name: Set up Python
         run: uv python install
 
-      - name: Test
-        run: make test
+      - name: Install dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Run tests
+        run: uv run pytest --cov=src --cov-report=xml
 
       # Requires a CODECOV_TOKEN repo secret; enable once codecov.io is
       # linked to this repository.
