@@ -1,0 +1,64 @@
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.20.2",
+  "ruff>=0.15.11",
+  "types-pyyaml>=6.0.12.20260408",
+]
+test = [
+  "pytest>=9.0.3",
+  "pytest-cov>=7.1.0",
+  "pytest-mock>=3.15.1",
+]
+docs = [
+  "mkdocs<2.0", # Stay on 1.x to maintain plugin compatibility
+  "mkdocs-gen-files>=0.6.1",
+  "mkdocs-glightbox>=0.5.2",
+  "mkdocs-jupyter>=0.26.3",
+  "mkdocs-literate-nav>=0.6.3",
+  "mkdocs-macros-plugin>=1.5.0",
+  "mkdocs-material>=9.7.6",
+  "mkdocstrings[python]>=1.0.4",
+  "pymarkdownlnt>=0.9.36",
+  "pymdown-extensions>=10.21.2",
+]
+
+[tool.ruff]
+preview = true
+include = [
+  "packages/*/src/**/*.py",
+  "packages/*/tests/**/*.py",
+]
+exclude = []
+lint.select = ["ALL"]
+lint.ignore = [
+  "COM812",
+  "CPY001",
+  "D100",
+  "D104",
+  "D107",
+  "D203",
+  "D213",
+  "FIX002", # Allow TODO comments without requiring a linked issue
+  "ISC001",
+  "TD002",  # Allow TODO comments without an author name
+  "TD003",  # Allow TODO comments without an issue link
+]
+
+[tool.mypy]
+files = [
+  "packages/pyqdi/src",
+  "packages/pyqdi/tests",
+  "packages/pyqdi-oqtopus/src",
+  "packages/pyqdi-oqtopus/tests",
+]
+exclude = []
+explicit_package_bases = true
+
+[tool.pymarkdown]
+plugins.line-length.enabled = false            # MD013: Disable line length limit
+plugins.first-line-heading.enabled = false     # MD041: Allow files to start without a top-level heading
+plugins.code-block-style.enabled = false       # MD046: Disable code block style consistency
+plugins.reference-links-images.enabled = false # MD060: Allow inconsistent reference link styles
