@@ -2,7 +2,7 @@ SHELL := bash
 .SHELLFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := help
 
-.PHONY: install format-all lint-all test-all verify docs-lint docs-build docs-serve help
+.PHONY: install format lint test verify docs-lint docs-build docs-serve help
 
 install: ## Install dependencies and configure git hooks and commit template
 	@uv sync --all-groups
@@ -10,19 +10,20 @@ install: ## Install dependencies and configure git hooks and commit template
 		git config --local commit.template .gitmessage; \
 	fi
 
-format-all: ## Run code formatting for all packages
-	@$(MAKE) -C packages/pyqdi format
-	@$(MAKE) -C packages/pyqdi-oqtopus format
+format: ## Run code formatting
+	@uv run ruff check --fix
+	@uv run ruff format
 
-lint-all: ## Run linting for all packages
-	@$(MAKE) -C packages/pyqdi lint
-	@$(MAKE) -C packages/pyqdi-oqtopus lint
+lint: ## Run linting
+	@uv lock --check
+	@uv run ruff check
+	@uv run ruff format --check
+	@uv run mypy
 
-test-all: ## Run tests for all packages
-	@$(MAKE) -C packages/pyqdi test
-	@$(MAKE) -C packages/pyqdi-oqtopus test
+test: ## Run tests
+	@uv run pytest
 
-verify: format-all lint-all test-all ## Run all verification steps (formatting, linting, testing)
+verify: format lint test ## Run all verification steps (formatting, linting, testing)
 
 docs-lint: ## Run documentation linting
 	@uv run pymarkdownlnt scan docs

@@ -1,5 +1,24 @@
-[tool.uv.workspace]
-members = ["packages/*"]
+[project]
+name = "qdi-oqtopus"
+version = "0.1.0"
+description = "OQTOPUS implementation of the QDI (Quantum Device Interface)."
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+license = "Apache-2.0"
+dependencies = [
+  "oqtopus-client>=1.1.7",
+]
+
+[project.urls]
+documentation = "https://qdi-oqtopus.readthedocs.io/"
+repository = "https://github.com/snuffkin/qdi-oqtopus"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/qdi_oqtopus"]
 
 [dependency-groups]
 dev = [
@@ -28,8 +47,8 @@ docs = [
 [tool.ruff]
 preview = true
 include = [
-  "packages/*/src/**/*.py",
-  "packages/*/tests/**/*.py",
+  "src/**/*.py",
+  "tests/**/*.py",
 ]
 exclude = []
 lint.select = ["ALL"]
@@ -47,15 +66,35 @@ lint.ignore = [
   "TD003",  # Allow TODO comments without an issue link
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "ANN201",
+  "ANN205",
+  "ANN401",
+  "CPY001",
+  "D",
+  "PLC1901",
+  "PLR2004",
+  "PLR6301",
+  "S101",
+]
+
 [tool.mypy]
 files = [
-  "packages/pyqdi/src",
-  "packages/pyqdi/tests",
-  "packages/pyqdi-oqtopus/src",
-  "packages/pyqdi-oqtopus/tests",
+  "src",
+  "tests",
 ]
 exclude = []
-explicit_package_bases = true
+
+[tool.pytest.ini_options]
+addopts = [
+  "--cov=src",
+  "--cov-report=term-missing",
+  "--cov-report=html",
+  "--cov-report=xml",
+]
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 [tool.pymarkdown]
 plugins.line-length.enabled = false            # MD013: Disable line length limit

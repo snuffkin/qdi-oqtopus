@@ -8,15 +8,15 @@ This project adopts a [Code of Conduct](https://github.com/oqtopus-team/.github/
 
 ## Reporting Bugs
 
-If you find a bug, please create an issue following the [Bug Report Template](https://github.com/xxx/qdi-oqtopus/tree/main/.github/ISSUE_TEMPLATE/BUG_REPORT.yaml).
+If you find a bug, please create an issue following the [Bug Report Template](https://github.com/snuffkin/qdi-oqtopus/tree/main/.github/ISSUE_TEMPLATE/BUG_REPORT.yaml).
 
 ## Questions
 
-If you have any questions, please create an issue following the [Question Template](https://github.com/xxx/qdi-oqtopus/tree/main/.github/ISSUE_TEMPLATE/QUESTION.yaml).
+If you have any questions, please create an issue following the [Question Template](https://github.com/snuffkin/qdi-oqtopus/tree/main/.github/ISSUE_TEMPLATE/QUESTION.yaml).
 
 ## Feature Requests
 
-If you have a new feature request, please create an issue following the [Feature Request Template](https://github.com/xxx/qdi-oqtopus/tree/main/.github/ISSUE_TEMPLATE/FEATURE_REQUEST.yaml).
+If you have a new feature request, please create an issue following the [Feature Request Template](https://github.com/snuffkin/qdi-oqtopus/tree/main/.github/ISSUE_TEMPLATE/FEATURE_REQUEST.yaml).
 
 ## Coding Guidelines
 

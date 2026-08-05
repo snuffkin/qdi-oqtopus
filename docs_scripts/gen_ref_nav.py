@@ -9,8 +9,7 @@ mod_symbol = '<code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>'
 
 root = Path(__file__).parent.parent
 packages = [
-    root / "packages" / "pyqdi" / "src",
-    root / "packages" / "pyqdi-oqtopus" / "src",
+    root / "src",
 ]
 
 for src in packages:

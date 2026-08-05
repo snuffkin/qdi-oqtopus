@@ -1,7 +1,7 @@
 
 # Development Environment Setup
 
-This guide explains how to set up the development environment for contributing to Python Project Template.  
+This guide explains how to set up the development environment for contributing to QDI OQTOPUS.  
 The project provides a **Makefile** to simplify common development tasks.
 
 ## Prerequisites
@@ -16,7 +16,7 @@ Install the following tools before starting development.
 Clone the repository:
 
 ```shell
-git clone https://github.com/xxx/qdi-oqtopus.git
+git clone https://github.com/snuffkin/qdi-oqtopus.git
 cd qdi-oqtopus
 ```
 
@@ -25,7 +25,7 @@ cd qdi-oqtopus
 The repository is organized as follows:
 
 ```text
-python-project-template/
+qdi-oqtopus/
 ├─ src/           # Python package source code
 ├─ tests/         # Test suite
 ├─ docs/          # Documentation sources (MkDocs)
