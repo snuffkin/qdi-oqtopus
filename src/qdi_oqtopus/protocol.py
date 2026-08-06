@@ -4,12 +4,19 @@ from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
-class QdiClientProtocol(Protocol):
+class QdiClient(Protocol):
     """Structural type describing the QDI client method surface.
 
-    Mirrors ``QdiClient`` in qdi-demo's ``qdi_python.py`` (the HTTP-facing
-    class), not ``NativeQdiClient``. The two reference classes disagree on
-    the signature of `estimate_resources`; see docs/gap-analysis.md#g010.
+    Named to match qdi-demo's ``QdiClient`` in ``qdi_python.py``.
+    The two reference classes disagree on the signature
+    of `estimate_resources`; see docs/gap-analysis.md (G010).
+
+    This class should not really exist here: QDI's own class should be used
+    directly instead. It is defined in qdi-oqtopus only because qdi-demo
+    does not publish a reusable interface artifact (see
+    docs/gap-analysis.md (Q5)), and should be removed from qdi-oqtopus
+    once QDI provides one.
+
     """
 
     def discover(self) -> dict:

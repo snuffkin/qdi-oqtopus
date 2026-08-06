@@ -62,7 +62,9 @@ def test_build_device_descriptor_maps_available_device() -> None:
     assert descriptor.supported_task_types == ["openqasm3"]
     assert descriptor.supported_auth_methods == ["token"]
     assert descriptor.supports_estimation is False
-    assert descriptor.max_shots is None
+    # Placeholder borrowed from qdi-demo's mock config, not real OQTOPUS
+    # data; see the QDI-GAP comment on build_device_descriptor().
+    assert descriptor.max_shots == 10000
 
 
 def test_build_device_descriptor_maps_unavailable_device() -> None:

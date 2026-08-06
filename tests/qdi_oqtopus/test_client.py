@@ -1,6 +1,7 @@
 """Tests for OqtopusQdiClient, with OqtopusClient fully mocked."""
 
 import json
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +13,6 @@ from oqtopus_client.rest.models.jobs_register_job_response import (
     JobsRegisterJobResponse,
 )
 from oqtopus_client.services.client import OqtopusClient
-from oqtopus_client.services.config import OqtopusConfig
 from oqtopus_client.services.errors import ResponseValidationError, UserApiError
 from oqtopus_client.services.job_results import (
     OqtopusJobResult,
@@ -53,42 +53,63 @@ def test_injected_client_is_treated_as_already_authenticated(
     mock_client.get_api_token_status.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda client: client.discover(),
+        lambda client: client.send(b"OPENQASM 3; qubit[1] q;", "openqasm3"),
+        lambda client: client.monitor("job-1"),
+        lambda client: client.receive("job-1"),
+    ],
+)
+def test_methods_raise_unauthorized_before_authenticate_is_called(
+    call: Callable[[OqtopusQdiClient], object],
+) -> None:
+    """No method authenticates on the caller's behalf; each requires it first.
+
+    This matches qdi-demo's own clients, which also require an explicit
+    `authenticate()` call before anything else works. See
+    docs/gap-analysis.md, gap G004/G011.
+    """
+    client = OqtopusQdiClient("dev1")
+
+    with pytest.raises(QdiError) as exc_info:
+        call(client)
+    assert exc_info.value.status == QdiStatus.ERROR_UNAUTHORIZED
+
+
 def test_authenticate_builds_and_verifies_a_client(mocker: MockerFixture) -> None:
-    """authenticate() builds an OqtopusClient from config and verifies the token."""
+    """authenticate() builds an OqtopusClient from credentials_dict and verifies it."""
     mock_client = _make_mock_oqtopus_client()
     oqtopus_client_class = mocker.patch(
         "qdi_oqtopus.client.OqtopusClient", return_value=mock_client
     )
-    config = OqtopusConfig(
-        base_url="https://example.test",
-        api_token="old",  # ruff: ignore[hardcoded-password-func-arg]
-    )
-    client = OqtopusQdiClient("dev1", config)
+    client = OqtopusQdiClient("dev1")
 
-    client.authenticate({"api_token": "new"})
+    client.authenticate({"base_url": "https://example.test", "api_token": "new"})
 
     oqtopus_client_class.assert_called_once()
     used_config = oqtopus_client_class.call_args[0][0]
-    assert used_config.api_token == "new"  # ruff: ignore[hardcoded-password-string]
     assert used_config.base_url == "https://example.test"
+    assert used_config.api_token == "new"  # ruff: ignore[hardcoded-password-string]
     mock_client.get_api_token_status.assert_called_once()
 
 
-def test_authenticate_without_credentials_revalidates_constructor_config(
-    mocker: MockerFixture,
-) -> None:
-    """An empty credentials_dict re-validates the config given at construction."""
-    mock_client = _make_mock_oqtopus_client()
-    mocker.patch("qdi_oqtopus.client.OqtopusClient", return_value=mock_client)
-    config = OqtopusConfig(
-        base_url="https://example.test",
-        api_token="preset",  # ruff: ignore[hardcoded-password-func-arg]
-    )
-    client = OqtopusQdiClient("dev1", config)
+@pytest.mark.parametrize(
+    "credentials_dict",
+    [
+        {},
+        {"base_url": "https://example.test"},
+        {"api_token": "some-token"},
+    ],
+)
+def test_authenticate_rejects_incomplete_credentials(credentials_dict: dict) -> None:
+    """Missing `base_url` or `api_token` surfaces as ERROR_INVALID_ARGUMENT."""
+    client = OqtopusQdiClient("dev1")
 
-    client.authenticate({})
-
-    mock_client.get_api_token_status.assert_called_once()
+    with pytest.raises(QdiError) as exc_info:
+        client.authenticate(credentials_dict)
+    assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT
 
 
 def test_authenticate_raises_qdi_error_on_invalid_token(
@@ -98,59 +119,11 @@ def test_authenticate_raises_qdi_error_on_invalid_token(
     mock_client = _make_mock_oqtopus_client()
     mock_client.get_api_token_status.side_effect = UserApiError(401, "invalid")
     mocker.patch("qdi_oqtopus.client.OqtopusClient", return_value=mock_client)
-    config = OqtopusConfig(
-        base_url="https://example.test",
-        api_token="rejected",  # ruff: ignore[hardcoded-password-func-arg]
-    )
-    client = OqtopusQdiClient("dev1", config)
-
-    with pytest.raises(QdiError) as exc_info:
-        client.authenticate({})
-    assert exc_info.value.status == QdiStatus.ERROR_UNAUTHORIZED
-
-
-def test_authenticate_raises_qdi_error_when_config_resolution_fails(
-    mocker: MockerFixture,
-) -> None:
-    """A config that can't be resolved at all surfaces as ERROR_INVALID_ARGUMENT."""
-    mocker.patch(
-        "qdi_oqtopus.client.OqtopusConfig.from_file",
-        side_effect=ValueError("no config file found"),
-    )
     client = OqtopusQdiClient("dev1")
 
     with pytest.raises(QdiError) as exc_info:
-        client.authenticate({})
-    assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT
-
-
-def test_ensure_authenticated_guards_against_a_client_that_never_got_set() -> None:
-    """A missing client despite `_authenticated=True` is reported, not crashed on."""
-    client = OqtopusQdiClient("dev1", client=MagicMock(spec=OqtopusClient))
-    client._client = None  # ruff: ignore[private-member-access]
-
-    with pytest.raises(QdiError) as exc_info:
-        client.discover()
-    assert exc_info.value.status == QdiStatus.ERROR_UNKNOWN
-
-
-def test_other_methods_authenticate_automatically_on_first_use(
-    mocker: MockerFixture,
-) -> None:
-    """discover() before authenticate() triggers authentication transparently."""
-    mock_client = _make_mock_oqtopus_client()
-    mock_client.get_device.return_value = make_oqtopus_device()
-    mocker.patch("qdi_oqtopus.client.OqtopusClient", return_value=mock_client)
-    config = OqtopusConfig(
-        base_url="https://example.test",
-        api_token="preset",  # ruff: ignore[hardcoded-password-func-arg]
-    )
-    client = OqtopusQdiClient("dev1", config)
-
-    client.discover()
-
-    mock_client.get_api_token_status.assert_called_once()
-    mock_client.get_device.assert_called_once_with("dev1")
+        client.authenticate({"base_url": "https://example.test", "api_token": "bad"})
+    assert exc_info.value.status == QdiStatus.ERROR_UNAUTHORIZED
 
 
 def test_discover_returns_device_descriptor_dict() -> None:
@@ -194,6 +167,37 @@ def test_send_submits_a_sampling_job_and_returns_job_id() -> None:
     submitted_spec = mock_client.submit_job.call_args[0][0]
     assert submitted_spec.device_id == "dev1"
     assert submitted_spec.shots == 500
+
+
+def test_send_forwards_oqtopus_only_keyword_arguments() -> None:
+    """name/description/transpiler_info/simulator_info/mitigation_info pass through.
+
+    These have no QDI counterpart (gap G007) and are only reachable by a
+    caller who steps outside QDI's `send(task_payload, task_type, shots)`
+    contract.
+    """
+    mock_client = _make_mock_oqtopus_client()
+    register_response = MagicMock(spec=JobsRegisterJobResponse)
+    register_response.job_id = "job-1"
+    mock_client.submit_job.return_value = register_response
+    client = _make_authenticated_client(mock_client)
+
+    client.send(
+        b"OPENQASM 3; qubit[1] q;",
+        "openqasm3",
+        name="my-job",
+        description="from qdi-oqtopus",
+        transpiler_info={"transpiler_lib": "qiskit"},
+        simulator_info={"n_shots": 100},
+        mitigation_info={"pseudo_inverse": True},
+    )
+
+    submitted_spec = mock_client.submit_job.call_args[0][0]
+    assert submitted_spec.name == "my-job"
+    assert submitted_spec.description == "from qdi-oqtopus"
+    assert submitted_spec.transpiler_info == {"transpiler_lib": "qiskit"}
+    assert submitted_spec.simulator_info == {"n_shots": 100}
+    assert submitted_spec.mitigation_info == {"pseudo_inverse": True}
 
 
 def test_send_translates_user_api_error() -> None:

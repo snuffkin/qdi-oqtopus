@@ -1,32 +1,55 @@
 # Getting Started
 
 `qdi-oqtopus` implements the client-side method surface of QDI (Quantum
-Device Interface, v0.1 Conceptual Draft) on top of [OQTOPUS
-Cloud](https://github.com/oqtopus-team/oqtopus-client). `OqtopusQdiClient`
-exposes the same 6 methods as QDI's `QdiClient` — `discover`, `authenticate`,
-`send`, `monitor`, `receive`, and `estimate_resources` — while talking to
-OQTOPUS underneath.
+Device Interface, v0.1 Conceptual Draft) on top of OQTOPUS Cloud. It uses
+[`oqtopus-client`](https://oqtopus-client.readthedocs.io/) to talk to
+OQTOPUS Cloud, and exposes the same 6 methods as QDI's
+[`QdiClient`](https://github.com/shassinger/qdi-demo/blob/main/qdi-core/python/qdi_python.py):
+`discover`, `authenticate`, `send`, `monitor`, `receive`, and
+`estimate_resources`.
 
 Every place where QDI and OQTOPUS do not map cleanly onto each other is
-tracked in [Gap Analysis](../gap-analysis.md); this guide focuses on the
+tracked in [Gap Analysis](../gap-analysis.md). This guide focuses on the
 parts that do work.
 
 ## Installation
 
+`qdi-oqtopus` is not yet published to PyPI. The following is the planned
+installation method once it is released:
+
 ```shell
-uv add qdi-oqtopus
+pip install qdi-oqtopus
 ```
 
-## Configuration
+## Connecting
 
 `OqtopusQdiClient` is bound to exactly one OQTOPUS device (see
-[gap G002](../gap-analysis.md)) and needs an OQTOPUS API token to do
-anything. The token can come from a config file, from environment
-variables, or be supplied later via `authenticate()`:
+docs/gap-analysis.md, gap G002) and takes only a device id at construction
+time:
+
+```python
+from qdi_oqtopus.client import OqtopusQdiClient
+
+client = OqtopusQdiClient("your-device-id")
+```
+
+Replace `"your-device-id"` with a device id from your OQTOPUS account, e.g.
+one listed via `OqtopusClient(config).list_devices()` (QDI itself has no
+multi-device listing operation; see docs/gap-analysis.md, gap G002).
+
+## Authenticating
+
+`authenticate()` must be called explicitly before any other method: no
+method authenticates on the caller's behalf (see docs/gap-analysis.md, gap
+G004 and gap G011). It requires `base_url` and `api_token` directly in
+`credentials_dict`. `oqtopus-client`'s own `OqtopusConfig` is a convenient
+way to resolve these values from a config file or environment variables
+instead of hardcoding them; see [its getting started
+guide](https://oqtopus-client.readthedocs.io/en/latest/usage/getting_started/)
+for the full set of options.
 
 ```python
 from oqtopus_client.services.config import OqtopusConfig
-from qdi_oqtopus.client import OqtopusQdiClient
 
 # Option 1: load base_url/api_token from ~/.config/oqtopus/config.ini
 config = OqtopusConfig.from_file()
@@ -35,12 +58,8 @@ config = OqtopusConfig.from_file()
 # environment variables instead
 # config = OqtopusConfig.from_env()
 
-client = OqtopusQdiClient("your-device-id", config)
+client.authenticate({"base_url": config.base_url, "api_token": config.api_token})
 ```
-
-Replace `"your-device-id"` with a device id from your OQTOPUS account (e.g.
-listed via `OqtopusClient(config).list_devices()` — QDI itself has no
-multi-device listing operation; see [gap G002](../gap-analysis.md)).
 
 ## Discovering the device
 
@@ -49,9 +68,10 @@ descriptor = client.discover()
 print(descriptor["is_ready"], descriptor["num_qubits"])
 ```
 
-The first call to any method (including `discover()`) transparently
-authenticates the underlying OQTOPUS client if `authenticate()` was not
-called explicitly first; see [gap G011](../gap-analysis.md).
+`discover()`, like every other method, raises `QdiError` with
+`ERROR_UNAUTHORIZED` if `authenticate()` was not called first. `qdi.h`
+lists `discover` before `authenticate`; for this adapter the usable order
+is the reverse (see docs/gap-analysis.md, gap G011).
 
 ## Submitting a task
 
@@ -83,7 +103,7 @@ print(QdiTaskStatus(status).name, advisory)
 
 `advisory` always carries OQTOPUS's original 7-value status string under
 `"oqtopus_status"`, since QDI's 5-value `QdiTaskStatus` cannot represent it
-exactly; see [gap G006](../gap-analysis.md).
+exactly (see docs/gap-analysis.md, gap G006).
 
 ## Retrieving results
 
@@ -101,7 +121,7 @@ print(result_type, counts)
 
 `estimate_resources()` always raises `QdiError` with
 `ERROR_ESTIMATION_FAILED`: OQTOPUS has no dry-run resource/cost estimation
-endpoint at all; see [gap G001](../gap-analysis.md).
+endpoint at all (see docs/gap-analysis.md, gap G001).
 
 ```python
 from qdi_oqtopus.errors import QdiError

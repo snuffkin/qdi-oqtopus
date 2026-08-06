@@ -20,8 +20,7 @@ This is an experimental adapter, not a finished product: its primary goal is
 to find out how far QDI's proposal can be mapped onto a real quantum cloud
 platform, and to document precisely where it cannot. See
 [`docs/gap-analysis.md`](docs/gap-analysis.md) for every point where the two
-diverge, and [`docs/qdi-spec-feedback.md`](docs/qdi-spec-feedback.md) for
-open questions this raised about the QDI spec itself.
+diverge and the open questions this raised about the QDI spec itself.
 
 ## Documentation
 
