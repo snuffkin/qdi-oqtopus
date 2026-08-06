@@ -5,14 +5,14 @@ https://github.com/shassinger/qdi-demo/blob/main/qdi-core/python/test_qdi.py
 
 Exercises authenticate() -> discover() -> send() -> monitor() -> receive()
 against a real OQTOPUS device, then demonstrates estimate_resources()'s
-documented failure (see docs/gap-analysis.md, gap G001).
+documented failure (see docs/gap-analysis.md, gap G2).
 
 ``OqtopusQdiClient`` requires `authenticate()` to be called before any
 other method, exactly like qdi-demo's ``NativeQdiClient``, so this script
 first confirms that calling `discover()` too early fails the same way
 qdi-demo's own script confirms `send()` before `authenticate()` fails.
 Unlike qdi-demo, `discover()` is the method that requires authentication
-first here, not `send()` (see docs/gap-analysis.md, gap G011): OQTOPUS
+first here, not `send()` (see docs/gap-analysis.md, gap G4): OQTOPUS
 requires `BearerAuth` on every endpoint, including device lookup, so the
 usable call order is the reverse of qdi.h's listed order.
 
@@ -113,7 +113,7 @@ def test_full_lifecycle(device_id: str) -> None:
     print(f"Result content: {result}")
     assert result_type == "counts"
 
-    print("Running Resource Estimation (expected to fail; see gap G001)...")
+    print("Running Resource Estimation (expected to fail; see gap G2)...")
     try:
         client.estimate_resources(TASK_PAYLOAD, "openqasm3", shots=SHOTS)
     except QdiError as exc:

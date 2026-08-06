@@ -19,9 +19,9 @@ be addressed through QDI's `discover` / `authenticate` / `send` / `monitor`
 This is an experimental adapter, not a finished product: its primary goal is
 to find out how far QDI's proposal can be mapped onto a real quantum cloud
 platform, and to document precisely where it cannot. See
-[Gap Analysis and QDI Specification Feedback](gap-analysis.md) for every
-point where the two diverge and the open questions this raised about the
-QDI spec itself.
+[Gap Analysis and Questions for QDI](gap-analysis.md) for every point where
+the two diverge and the open questions this raised about the QDI spec
+itself.
 
 ## Usage
 

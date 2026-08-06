@@ -23,9 +23,8 @@ if TYPE_CHECKING:
 class OqtopusQdiClient:
     """QDI client adapter backed by OQTOPUS Cloud.
 
-    # QDI-GAP(device-cardinality): QDI's 6 core functions never take a
-    # device identifier; this adapter binds one instance to exactly one
-    # device at construction time instead. See docs/gap-analysis.md (G002).
+    Bound to exactly one OQTOPUS device at construction time. See
+    docs/gap-analysis.md (Q1).
 
     Attributes:
         device_id: The single OQTOPUS device this instance talks to.
@@ -54,10 +53,6 @@ class OqtopusQdiClient:
     def _require_authenticated(self) -> OqtopusClient:
         """Return the authenticated client, or raise if never authenticated.
 
-        Unlike an earlier revision, this does not authenticate on the
-        caller's behalf: `authenticate()` must have been called explicitly
-        first, matching qdi-demo's own clients.
-
         Returns:
             The `OqtopusClient` established by `authenticate()`.
 
@@ -74,12 +69,8 @@ class OqtopusQdiClient:
     def discover(self) -> dict:
         """Discover this device's properties, capabilities, and configuration.
 
-        # QDI-GAP(discover-requires-auth): OQTOPUS requires `BearerAuth` on
-        # every endpoint, including device lookup, so this raises unless
-        # `authenticate()` was already called. qdi.h lists `qdi_discover`
-        # before `qdi_authenticate`, but the only usable call order here is
-        # authenticate() then discover(), the reverse. See
-        # docs/gap-analysis.md (G011, Q4).
+        # GAP(discover-requires-auth): requires `authenticate()` first,
+        # the reverse of qdi.h's listed order. See docs/gap-analysis.md (G4).
 
         Returns:
             The device descriptor as a JSON-compatible dict.
@@ -99,13 +90,9 @@ class OqtopusQdiClient:
     def authenticate(self, credentials_dict: dict) -> None:
         """Establish the OQTOPUS client used for all other calls.
 
-        # QDI-GAP(authenticate): OQTOPUS has no in-band credential exchange
-        # endpoint at all -- even token creation itself requires an
-        # existing bearer token (see spec/openapi.yaml). ``credentials_dict``
-        # must therefore carry a token that was already obtained
-        # out-of-band; this method can only build a client from it and
-        # verify it works, not perform a real handshake. See
-        # docs/gap-analysis.md (G004, Q2).
+        # GAP(authenticate): only validates a token obtained out-of-band;
+        # OQTOPUS has no in-band credential exchange. See
+        # docs/gap-analysis.md (G4).
 
         Args:
             credentials_dict: Must contain ``base_url`` and ``api_token``.
@@ -131,12 +118,9 @@ class OqtopusQdiClient:
 
         self._client = candidate
 
-    # QDI-GAP(vendor-extension-kwargs): task_payload/task_type/shots are
-    # QDI's entire `send()` contract; name/description/transpiler_info/
-    # simulator_info/mitigation_info below have no QDI counterpart at all
-    # and are exposed only as keyword-only extras, reachable only by a
-    # caller who already knows to step outside QDI. See
-    # docs/gap-analysis.md (G007).
+    # GAP(vendor-extension-kwargs): name/description/transpiler_info/
+    # simulator_info/mitigation_info have no QDI counterpart. See
+    # docs/gap-analysis.md (Q2).
     def send(  # ruff: ignore[too-many-arguments]
         self,
         task_payload: bytes,
@@ -151,12 +135,7 @@ class OqtopusQdiClient:
     ) -> str:
         """Submit an opaque task payload to this device.
 
-        `name`/`description`/`transpiler_info`/`simulator_info`/
-        `mitigation_info` are OQTOPUS-specific `OqtopusJobSpec` fields with
-        no QDI counterpart. QDI's own `send()` contract is exactly
-        `(task_payload, task_type, shots)`; a caller sticking to that
-        contract gets `None` for all five and plain OQTOPUS defaults. See
-        docs/gap-analysis.md (G007).
+        See docs/gap-analysis.md (Q2) on the OQTOPUS-only keyword arguments.
 
         Args:
             task_payload: UTF-8-encoded OPENQASM 3 program bytes.
@@ -198,9 +177,9 @@ class OqtopusQdiClient:
         except UserApiError as exc:
             raise QdiError(resolve_qdi_status(exc.status_code), exc.message) from exc
         except OqtopusStorageError as exc:
-            # QDI-GAP(send-partial-failure): submit_job()'s S3 upload step
+            # GAP(send-partial-failure): submit_job()'s S3 upload step
             # can fail independently of its two HTTP calls, with no HTTP
-            # status of its own to translate. See docs/gap-analysis.md (G013).
+            # status of its own to translate. See docs/gap-analysis.md (Q4).
             raise QdiError(QdiStatus.ERROR_CONNECTION_FAILED, str(exc)) from exc
         return response.job_id
 
@@ -212,7 +191,7 @@ class OqtopusQdiClient:
 
         Returns:
             A ``(status, advisory)`` pair. ``advisory`` always carries the
-            original OQTOPUS status string; see docs/gap-analysis.md (G006).
+            original OQTOPUS status string; see docs/gap-analysis.md (G1).
 
         Raises:
             QdiError: With `QdiStatus.ERROR_UNAUTHORIZED` if `authenticate()`
@@ -230,11 +209,8 @@ class OqtopusQdiClient:
     def receive(self, task_id: str) -> tuple[str, str]:
         """Retrieve execution results for a completed task.
 
-        # QDI-GAP(receive-not-ready): QDI has no status for "task exists but
-        # results are not ready yet". OQTOPUS's own `get_job()` raises for a
-        # task still in the ``registered`` state (QDI's `QUEUED`); this is
-        # surfaced as `QdiStatus.ERROR_UNKNOWN` for lack of a better code.
-        # See docs/gap-analysis.md (G014).
+        # GAP(receive-not-ready): QDI has no "not ready yet" status, so a
+        # task still ``registered`` on OQTOPUS surfaces as `ERROR_UNKNOWN`.
 
         Args:
             task_id: OQTOPUS job id returned by `send()`.
@@ -279,7 +255,7 @@ class OqtopusQdiClient:
         """Dry-run a task to estimate required resources or cost.
 
         Always fails: OQTOPUS has no such capability. See
-        docs/gap-analysis.md (G001, Q3).
+        docs/gap-analysis.md (G2, Q3).
 
         Args:
             task_payload: Unused; OQTOPUS never receives this call.

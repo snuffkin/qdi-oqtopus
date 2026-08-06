@@ -26,7 +26,7 @@ def test_qdi_task_status_values_match_qdi_h() -> None:
 
 
 def test_qdi_status_and_qdi_task_status_are_distinct_enums() -> None:
-    """The two enums must stay separate namespaces (see gap G009)."""
+    """The two enums must stay separate namespaces."""
     assert not issubclass(QdiTaskStatus, QdiStatus)
     assert not issubclass(QdiStatus, QdiTaskStatus)
 

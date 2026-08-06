@@ -24,8 +24,8 @@ pip install qdi-oqtopus
 ## Connecting
 
 `OqtopusQdiClient` is bound to exactly one OQTOPUS device (see
-docs/gap-analysis.md, gap G002) and takes only a device id at construction
-time:
+docs/gap-analysis.md, question Q1) and takes only a device id at
+construction time:
 
 ```python
 from qdi_oqtopus.client import OqtopusQdiClient
@@ -35,13 +35,13 @@ client = OqtopusQdiClient("your-device-id")
 
 Replace `"your-device-id"` with a device id from your OQTOPUS account, e.g.
 one listed via `OqtopusClient(config).list_devices()` (QDI itself has no
-multi-device listing operation; see docs/gap-analysis.md, gap G002).
+multi-device listing operation; see docs/gap-analysis.md, question Q1).
 
 ## Authenticating
 
 `authenticate()` must be called explicitly before any other method: no
 method authenticates on the caller's behalf (see docs/gap-analysis.md, gap
-G004 and gap G011). It requires `base_url` and `api_token` directly in
+G4). It requires `base_url` and `api_token` directly in
 `credentials_dict`. `oqtopus-client`'s own `OqtopusConfig` is a convenient
 way to resolve these values from a config file or environment variables
 instead of hardcoding them; see [its getting started
@@ -71,7 +71,7 @@ print(descriptor["is_ready"], descriptor["num_qubits"])
 `discover()`, like every other method, raises `QdiError` with
 `ERROR_UNAUTHORIZED` if `authenticate()` was not called first. `qdi.h`
 lists `discover` before `authenticate`; for this adapter the usable order
-is the reverse (see docs/gap-analysis.md, gap G011).
+is the reverse (see docs/gap-analysis.md, gap G4).
 
 ## Submitting a task
 
@@ -82,6 +82,7 @@ accepts OPENQASM 3 programs (`"openqasm3"` / `"qasm3"`; anything else raises
 ```python
 program = b"""
 OPENQASM 3;
+include "stdgates.inc";
 qubit[2] q;
 bit[2] c;
 h q[0];
@@ -103,7 +104,7 @@ print(QdiTaskStatus(status).name, advisory)
 
 `advisory` always carries OQTOPUS's original 7-value status string under
 `"oqtopus_status"`, since QDI's 5-value `QdiTaskStatus` cannot represent it
-exactly (see docs/gap-analysis.md, gap G006).
+exactly (see docs/gap-analysis.md, gap G1).
 
 ## Retrieving results
 
@@ -121,7 +122,7 @@ print(result_type, counts)
 
 `estimate_resources()` always raises `QdiError` with
 `ERROR_ESTIMATION_FAILED`: OQTOPUS has no dry-run resource/cost estimation
-endpoint at all (see docs/gap-analysis.md, gap G001).
+endpoint at all (see docs/gap-analysis.md, gap G2).
 
 ```python
 from qdi_oqtopus.errors import QdiError

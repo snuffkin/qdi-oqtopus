@@ -7,11 +7,8 @@ from enum import IntEnum
 class QdiStatus(IntEnum):
     """QDI status return codes (``qdi_status`` in qdi.h).
 
-    This class should not really exist here: QDI's own enum should be used
-    directly instead. It is defined in qdi-oqtopus only because qdi-demo
-    never turns ``qdi_status`` into a Python enum either. It uses raw dict
-    literals of magic numbers instead (see docs/gap-analysis.md (Q5)),
-    and should be removed from qdi-oqtopus once QDI provides one.
+    A hand-derived stopgap, since QDI does not publish this as a reusable
+    type; should be removed once it does.
     """
 
     SUCCESS = 0
@@ -28,17 +25,11 @@ class QdiStatus(IntEnum):
 class QdiTaskStatus(IntEnum):
     """QDI task execution states (``qdi_task_status`` in qdi.h).
 
-    This is a distinct enum from `QdiStatus`, despite both being small
-    integers starting at 0. qdi-demo's ``QdiClient.monitor()`` conflates the
-    two by returning ``99`` (a `QdiStatus` value) for an unrecognized task
-    status; do not repeat that mistake here. See docs/gap-analysis.md (G009).
+    A distinct enum from `QdiStatus`, despite both being small integers
+    starting at 0 -- do not conflate them.
 
-    This class should not really exist here: QDI's own enum should be used
-    directly instead. It is defined in qdi-oqtopus only because qdi-demo
-    never turns ``qdi_task_status`` into a Python enum either. It uses raw
-    dict literals of magic numbers instead (see
-    docs/gap-analysis.md (Q5)), and should be removed from qdi-oqtopus
-    once QDI provides one.
+    A hand-derived stopgap, since QDI does not publish this as a reusable
+    type; should be removed once it does.
     """
 
     QUEUED = 0
@@ -52,15 +43,8 @@ class QdiTaskStatus(IntEnum):
 class QdiDeviceDescriptor:
     """Device descriptor returned by ``discover()``.
 
-    Field set matches qdi-demo's ``mock_device_config.json``. Unlike
-    `QdiClient`/`QdiStatus`/`QdiTaskStatus`, this is not a hand-derived
-    duplicate of something QDI already defines: QDI never specifies a
-    schema for the descriptor at all (``qdi.h`` calls it only "the JSON
-    string detailing device descriptors"). This field set is this
-    project's own inference of a portable subset from a mock server's
-    example config, not a QDI-defined contract. See
-    docs/gap-analysis.md (Q6) for the resulting recommendation that QDI
-    define an actual schema.
+    Field set matches qdi-demo's ``mock_device_config.json``; QDI itself
+    does not define a schema for this descriptor.
 
     Attributes:
         device_id: Unique device identifier.

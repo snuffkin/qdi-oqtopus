@@ -63,7 +63,7 @@ def test_build_device_descriptor_maps_available_device() -> None:
     assert descriptor.supported_auth_methods == ["token"]
     assert descriptor.supports_estimation is False
     # Placeholder borrowed from qdi-demo's mock config, not real OQTOPUS
-    # data; see the QDI-GAP comment on build_device_descriptor().
+    # data; see the GAP comment on build_device_descriptor().
     assert descriptor.max_shots == 10000
 
 
@@ -83,13 +83,13 @@ def test_build_job_spec_decodes_payload_and_maps_task_type() -> None:
     """A valid OPENQASM 3 payload becomes a sampling OqtopusJobSpec."""
     spec = build_job_spec(
         device_id="dev1",
-        task_payload=b"OPENQASM 3; qubit[1] q;",
+        task_payload=b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
         task_type="qasm3",
         shots=1000,
     )
     assert isinstance(spec, OqtopusJobSpec)
     assert spec.device_id == "dev1"
-    assert spec.program == "OPENQASM 3; qubit[1] q;"
+    assert spec.program == 'OPENQASM 3; include "stdgates.inc"; qubit[1] q;'
     assert spec.shots == 1000
 
 
@@ -97,7 +97,7 @@ def test_build_job_spec_forwards_vendor_extension_defaults() -> None:
     """transpiler_info/simulator_info/mitigation_info/name/description pass through."""
     spec = build_job_spec(
         device_id="dev1",
-        task_payload=b"OPENQASM 3; qubit[1] q;",
+        task_payload=b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
         task_type="openqasm3",
         shots=100,
         name="my-job",

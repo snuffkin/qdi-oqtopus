@@ -34,7 +34,7 @@ def map_job_status(status: JobsJobStatus) -> tuple[QdiTaskStatus, dict[str, str]
     """Map an OQTOPUS job status to a QDI task status plus advisory metadata.
 
     Collapses OQTOPUS's 7 statuses onto QDI's 5; see
-    docs/gap-analysis.md (G006).
+    docs/gap-analysis.md (G1).
 
     Args:
         status: OQTOPUS job status, as returned by ``get_job_status()``.
@@ -72,10 +72,8 @@ def map_task_type(task_type: str) -> str:
     raise QdiError(QdiStatus.ERROR_UNSUPPORTED_FORMAT, msg)
 
 
-# QDI-GAP(max_shots): OQTOPUS does not publish a per-device shot limit
-# anywhere in its User API. This value is *not* derived from OQTOPUS at
-# all: it is qdi-demo's mock_device_config.json example value, reused here
-# as a placeholder by explicit project decision. See docs/gap-analysis.md (G003).
+# GAP(max_shots): placeholder value, not derived from OQTOPUS. See
+# docs/gap-analysis.md (G3).
 _PLACEHOLDER_MAX_SHOTS = 10000
 
 
@@ -95,8 +93,8 @@ def build_device_descriptor(device: OqtopusDevice) -> QdiDeviceDescriptor:
         supported_auth_methods=["token"],
         supported_task_types=["openqasm3"],
         is_ready=device.status == "available",
-        # QDI-GAP(supports_estimation): OQTOPUS has no dry-run resource/cost
-        # estimation endpoint for any device. See docs/gap-analysis.md (G001).
+        # GAP(supports_estimation): OQTOPUS has no dry-run resource/cost
+        # estimation endpoint for any device. See docs/gap-analysis.md (G2).
         supports_estimation=False,
         num_qubits=device.n_qubits,
         max_shots=_PLACEHOLDER_MAX_SHOTS,
@@ -117,10 +115,7 @@ def build_job_spec(  # ruff: ignore[too-many-arguments]
 ) -> OqtopusJobSpec:
     """Build an OQTOPUS sampling job spec from a QDI `send()` call.
 
-    ``transpiler_info``/``simulator_info``/``mitigation_info``/``name``/
-    ``description`` are not reachable through QDI's `send()` signature; they
-    are OQTOPUS-specific defaults supplied by `OqtopusQdiClient` at
-    construction time. See docs/gap-analysis.md (G007).
+    See docs/gap-analysis.md (Q2) on the OQTOPUS-only keyword arguments.
 
     Args:
         device_id: Target OQTOPUS device id.

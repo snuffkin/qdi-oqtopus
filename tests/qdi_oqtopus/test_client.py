@@ -23,6 +23,7 @@ from pytest_mock import MockerFixture
 
 from qdi_oqtopus.client import OqtopusQdiClient
 from qdi_oqtopus.errors import QdiError
+from qdi_oqtopus.protocol import QdiClient
 from qdi_oqtopus.types import QdiStatus, QdiTaskStatus
 
 from ._factories import make_oqtopus_device
@@ -36,6 +37,11 @@ def _make_authenticated_client(
     mock_client: MagicMock | None = None,
 ) -> OqtopusQdiClient:
     return OqtopusQdiClient("dev1", client=mock_client or _make_mock_oqtopus_client())
+
+
+def test_oqtopus_qdi_client_satisfies_qdi_client_protocol() -> None:
+    """`OqtopusQdiClient` structurally satisfies the `QdiClient` protocol."""
+    assert isinstance(OqtopusQdiClient("dev1"), QdiClient)
 
 
 def test_injected_client_is_treated_as_already_authenticated(
@@ -57,7 +63,9 @@ def test_injected_client_is_treated_as_already_authenticated(
     "call",
     [
         lambda client: client.discover(),
-        lambda client: client.send(b"OPENQASM 3; qubit[1] q;", "openqasm3"),
+        lambda client: client.send(
+            b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3"
+        ),
         lambda client: client.monitor("job-1"),
         lambda client: client.receive("job-1"),
     ],
@@ -69,7 +77,7 @@ def test_methods_raise_unauthorized_before_authenticate_is_called(
 
     This matches qdi-demo's own clients, which also require an explicit
     `authenticate()` call before anything else works. See
-    docs/gap-analysis.md, gap G004/G011.
+    docs/gap-analysis.md, gap G4.
     """
     client = OqtopusQdiClient("dev1")
 
@@ -161,7 +169,9 @@ def test_send_submits_a_sampling_job_and_returns_job_id() -> None:
     mock_client.submit_job.return_value = register_response
     client = _make_authenticated_client(mock_client)
 
-    task_id = client.send(b"OPENQASM 3; qubit[1] q;", "openqasm3", shots=500)
+    task_id = client.send(
+        b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3", shots=500
+    )
 
     assert task_id == "job-1"
     submitted_spec = mock_client.submit_job.call_args[0][0]
@@ -172,7 +182,7 @@ def test_send_submits_a_sampling_job_and_returns_job_id() -> None:
 def test_send_forwards_oqtopus_only_keyword_arguments() -> None:
     """name/description/transpiler_info/simulator_info/mitigation_info pass through.
 
-    These have no QDI counterpart (gap G007) and are only reachable by a
+    These have no QDI counterpart (question Q2) and are only reachable by a
     caller who steps outside QDI's `send(task_payload, task_type, shots)`
     contract.
     """
@@ -183,7 +193,7 @@ def test_send_forwards_oqtopus_only_keyword_arguments() -> None:
     client = _make_authenticated_client(mock_client)
 
     client.send(
-        b"OPENQASM 3; qubit[1] q;",
+        b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
         "openqasm3",
         name="my-job",
         description="from qdi-oqtopus",
@@ -207,7 +217,7 @@ def test_send_translates_user_api_error() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.send(b"OPENQASM 3; qubit[1] q;", "openqasm3")
+        client.send(b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3")
     assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT
 
 
@@ -218,7 +228,7 @@ def test_send_translates_storage_error_as_connection_failed() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.send(b"OPENQASM 3; qubit[1] q;", "openqasm3")
+        client.send(b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3")
     assert exc_info.value.status == QdiStatus.ERROR_CONNECTION_FAILED
 
 

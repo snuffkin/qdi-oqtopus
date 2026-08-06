@@ -20,11 +20,6 @@ _HTTP_STATUS_TO_QDI_STATUS: dict[int, QdiStatus] = {
 def resolve_qdi_status(status_code: int) -> QdiStatus:
     """Map an OQTOPUS HTTP status code to the closest matching `QdiStatus`.
 
-    # QDI-GAP(status-code-mapping): `qdi_status` has no code for "device not
-    # found" distinct from `ERROR_TASK_NOT_FOUND`, and no HTTP status
-    # unambiguously corresponds to `ERROR_HARDWARE_FAULT`, so an unrecognized
-    # status falls back to `ERROR_UNKNOWN`. See docs/gap-analysis.md (G012).
-
     Args:
         status_code: HTTP status code from a `UserApiError`.
 
@@ -39,17 +34,8 @@ def resolve_qdi_status(status_code: int) -> QdiStatus:
 class QdiError(Exception):
     """Exception representing a QDI status code.
 
-    The C ABI's ``qdi_status`` return code alone cannot carry a message, but
-    this Python-level exception keeps the original error message as exception
-    state so nothing is discarded at the Python API layer. See
-    docs/gap-analysis.md (G008).
-
-    qdi-demo's own ``QDIError.__init__(self, code, detail=None)`` names this
-    attribute ``code`` and leaves it untyped. This class keeps it as
-    ``status: QdiStatus`` instead, deliberately: every call site here
-    already passes a `QdiStatus` member, so a looser `int` annotation
-    would describe a usage pattern that does not actually occur. See
-    docs/gap-analysis.md (Q5).
+    Keeps the original error message as exception state, unlike the C ABI's
+    ``qdi_status`` return code, which cannot carry one.
 
     Attributes:
         status: The QDI status code this error corresponds to.
@@ -73,9 +59,9 @@ class QdiError(Exception):
     def from_user_api_error(cls, exc: UserApiError) -> QdiError:
         """Convert an OQTOPUS `UserApiError` into a `QdiError`.
 
-        The original message is never discarded (see docs/gap-analysis.md,
-        G008): it survives as `QdiError.detail`. See `resolve_qdi_status`
-        for the status-code mapping this uses.
+        The original message is never discarded: it survives as
+        `QdiError.detail`. See `resolve_qdi_status` for the status-code
+        mapping this uses.
 
         Args:
             exc: The OQTOPUS error being translated.
