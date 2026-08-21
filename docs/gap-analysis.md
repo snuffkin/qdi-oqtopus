@@ -34,13 +34,12 @@ one-to-one.
 
 ### OQTOPUS Limitations
 
-G3 and G4 are not supported by OQTOPUS today; we would like to consider
-supporting them in the near future.
+G4 is not supported by OQTOPUS today; we would like to consider
+supporting it in the near future.
 
 | ID | QDI element | Details |
 |----|-------------|---------|
 | G2 | `qdi_estimate_resources` | **Workaround:** Always raise `QdiError(ERROR_ESTIMATION_FAILED)`. **Notes:** OQTOPUS has no dry-run resource/cost estimation capability. v0.2 §3.5 downgrades Resource Estimation to `[OPTIONAL]`; a device can now conform simply by declaring `supports_estimation: false`, which matches this project's existing behavior. See Q3 (answered in v0.2). |
-| G3 | `device_descriptor.max_shots` | **Workaround:** Report a hardcoded `10000`. **Notes:** OQTOPUS publishes no per-device shot limit; this needs to be addressed on OQTOPUS's side. |
 | G4 | `qdi_authenticate` | **Workaround:** Call OQTOPUS's `get_api_token_status()` API to validate `base_url`/`api_token`. **Notes:** OQTOPUS has no standalone authenticate interface; it requires `BearerAuth` on every endpoint, including `discover()`, so the only usable call order is `authenticate()` then `discover()`. v0.2 §2.2 natively supports bearer tokens and allows the `Authenticate` handshake to be skipped when a valid token is provided directly, but OQTOPUS's own workaround here is unaffected, and the call-order constraint still holds. |
 
 ## Part 2: Questions for QDI
@@ -113,7 +112,9 @@ confirms the approximation approach this project already took.
 
 ### v0.2
 
-Entries will be added here as each PR in the v0.2 migration lands.
+- G3 (`max_shots`) removed: no longer a required descriptor field per
+  §3.1. OQTOPUS still publishes no per-device shot limit, but QDI no
+  longer asks.
 
 ### v0.1
 
