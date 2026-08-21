@@ -7,6 +7,7 @@ from oqtopus_client.services.job_spec import OqtopusJobSpec
 from qdi_oqtopus.errors import QdiError
 from qdi_oqtopus.mapping import (
     build_device_descriptor,
+    build_device_descriptors,
     build_job_spec,
     map_job_status,
     map_task_type,
@@ -74,6 +75,25 @@ def test_build_device_descriptor_passes_through_missing_qubit_count() -> None:
     """A device that does not publish n_qubits reports num_qubits as None."""
     descriptor = build_device_descriptor(_make_device(n_qubits=None))
     assert descriptor.num_qubits is None
+
+
+def test_build_device_descriptors_maps_each_device_in_order() -> None:
+    """build_device_descriptors() maps every device, preserving order."""
+    devices = [
+        _make_device(device_id="dev1", status="available"),
+        _make_device(device_id="dev2", status="unavailable"),
+    ]
+
+    descriptors = build_device_descriptors(devices)
+
+    assert [descriptor.device_id for descriptor in descriptors] == ["dev1", "dev2"]
+    assert descriptors[0].is_ready is True
+    assert descriptors[1].is_ready is False
+
+
+def test_build_device_descriptors_maps_empty_list() -> None:
+    """build_device_descriptors() returns an empty list for no devices."""
+    assert build_device_descriptors([]) == []
 
 
 def test_build_job_spec_decodes_payload_and_maps_task_type() -> None:

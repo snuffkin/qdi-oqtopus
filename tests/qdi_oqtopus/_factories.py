@@ -5,7 +5,7 @@ from oqtopus_client.services.device import OqtopusDevice
 
 
 def make_oqtopus_device(
-    *, status: str = "available", n_qubits: int | None = 4
+    *, device_id: str = "dev1", status: str = "available", n_qubits: int | None = 4
 ) -> OqtopusDevice:
     """Build an `OqtopusDevice` without any network access.
 
@@ -15,7 +15,7 @@ def make_oqtopus_device(
 
     """
     raw = DevicesDeviceInfo(
-        device_id="dev1",
+        device_id=device_id,
         device_type="QPU",
         status=status,
         n_pending_jobs=0,
