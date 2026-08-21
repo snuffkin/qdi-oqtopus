@@ -51,6 +51,8 @@ class QdiDeviceDescriptor:
         display_name: Human-readable device name.
         supported_auth_methods: Authentication methods the device accepts.
         supported_task_types: Task/circuit format identifiers the device accepts.
+        supported_extensions: Vendor-specific ``extensions`` keys the device
+            accepts on ``send()``/``estimate_resources()``.
         is_ready: Whether the device can currently accept new tasks.
         supports_estimation: Whether ``estimate_resources()`` is meaningful for
             this device.
@@ -62,6 +64,7 @@ class QdiDeviceDescriptor:
     display_name: str
     supported_auth_methods: list[str]
     supported_task_types: list[str]
+    supported_extensions: list[str]
     is_ready: bool
     supports_estimation: bool
     num_qubits: int | None

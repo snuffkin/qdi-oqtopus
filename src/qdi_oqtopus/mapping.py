@@ -29,6 +29,13 @@ _JOB_STATUS_TO_TASK_STATUS: dict[JobsJobStatus, QdiTaskStatus] = {
 _OQTOPUS_PROGRAM_FORMAT = "openqasm3"
 _SUPPORTED_TASK_TYPE_ALIASES = frozenset({"openqasm3", "qasm3"})
 
+_SUPPORTED_EXTENSIONS: tuple[str, ...] = (
+    "name",
+    "description",
+    "transpiler_info",
+    "mitigation_info",
+)
+
 
 def map_job_status(status: JobsJobStatus) -> tuple[QdiTaskStatus, dict[str, str]]:
     """Map an OQTOPUS job status to a QDI task status plus advisory metadata.
@@ -72,6 +79,33 @@ def map_task_type(task_type: str) -> str:
     raise QdiError(QdiStatus.ERROR_UNSUPPORTED_FORMAT, msg)
 
 
+def validate_extensions(
+    extensions: Mapping[str, Any] | None,
+    supported: Iterable[str],
+) -> None:
+    """Reject any ``extensions`` key not declared in ``supported_extensions``.
+
+    QDI v0.2 §3.2 requires a Device to immediately reject a submission
+    that contains an undeclared extension key, rather than silently
+    dropping it.
+
+    Args:
+        extensions: The Host-supplied ``extensions`` mapping, if any.
+        supported: The device's declared ``supported_extensions`` keys.
+
+    Raises:
+        QdiError: With `QdiStatus.ERROR_INVALID_ARGUMENT` if ``extensions``
+            contains a key not present in ``supported``.
+
+    """
+    if not extensions:
+        return
+    unknown = sorted(set(extensions) - set(supported))
+    if unknown:
+        msg = f"Unsupported extensions key(s): {unknown}."
+        raise QdiError(QdiStatus.ERROR_INVALID_ARGUMENT, msg)
+
+
 def build_device_descriptor(device: OqtopusDevice) -> QdiDeviceDescriptor:
     """Build a `QdiDeviceDescriptor` from an OQTOPUS device.
 
@@ -87,6 +121,7 @@ def build_device_descriptor(device: OqtopusDevice) -> QdiDeviceDescriptor:
         display_name=device.description,
         supported_auth_methods=["token"],
         supported_task_types=["openqasm3"],
+        supported_extensions=list(_SUPPORTED_EXTENSIONS),
         is_ready=device.status == "available",
         # GAP(supports_estimation): OQTOPUS has no dry-run resource/cost
         # estimation endpoint for any device. See docs/gap-analysis.md (G2).
@@ -110,43 +145,37 @@ def build_device_descriptors(
     return [build_device_descriptor(device) for device in devices]
 
 
-def build_job_spec(  # ruff: ignore[too-many-arguments]
+def build_job_spec(
     *,
     device_id: str,
     task_payload: bytes,
     task_type: str,
     shots: int,
-    name: str | None = None,
-    description: str | None = None,
-    transpiler_info: Mapping[str, Any] | None = None,
-    simulator_info: Mapping[str, Any] | None = None,
-    mitigation_info: Mapping[str, Any] | None = None,
+    extensions: Mapping[str, Any] | None = None,
 ) -> OqtopusJobSpec:
     """Build an OQTOPUS sampling job spec from a QDI `send()` call.
-
-    See docs/gap-analysis.md (Q2) on the OQTOPUS-only keyword arguments.
 
     Args:
         device_id: Target OQTOPUS device id.
         task_payload: Opaque QDI task payload; must be UTF-8-encoded OPENQASM 3.
         task_type: QDI task-type identifier, validated via `map_task_type`.
         shots: Execution shots.
-        name: OQTOPUS job name default.
-        description: OQTOPUS job description default.
-        transpiler_info: OQTOPUS transpiler settings default.
-        simulator_info: OQTOPUS simulator settings default.
-        mitigation_info: OQTOPUS error-mitigation settings default.
+        extensions: Vendor-specific keys from `_SUPPORTED_EXTENSIONS`
+            (e.g. ``name``, ``transpiler_info``), forwarded as-is to
+            `OqtopusJobSpec.sampling`.
 
     Returns:
         The OQTOPUS sampling job specification to submit.
 
     Raises:
         QdiError: With `QdiStatus.ERROR_UNSUPPORTED_FORMAT` if ``task_type``
-            is unsupported, or `QdiStatus.ERROR_INVALID_ARGUMENT` if
-            ``task_payload`` is not valid UTF-8 text.
+            is unsupported; `QdiStatus.ERROR_INVALID_ARGUMENT` if
+            ``task_payload`` is not valid UTF-8 text, or if ``extensions``
+            contains a key outside `_SUPPORTED_EXTENSIONS`.
 
     """
     map_task_type(task_type)
+    validate_extensions(extensions, _SUPPORTED_EXTENSIONS)
 
     try:
         program = task_payload.decode("utf-8")
@@ -158,9 +187,5 @@ def build_job_spec(  # ruff: ignore[too-many-arguments]
         device_id=device_id,
         program=program,
         shots=shots,
-        name=name,
-        description=description,
-        transpiler_info=transpiler_info,
-        simulator_info=simulator_info,
-        mitigation_info=mitigation_info,
+        **(extensions or {}),
     )

@@ -47,26 +47,11 @@ supporting it in the near future.
 | ID | Asked against | Status |
 |----|---------------|--------|
 | Q1 | v0.1 | answered in v0.2 (§3) |
-| Q2 | v0.1 | active |
+| Q2 | v0.1 | answered in v0.2 (§3.1, §3.2) |
 | Q3 | v0.1 | answered in v0.2 (§3.1) |
 | Q4 | v0.1 | answered in v0.2 (§4) |
 
-### Active
-
-#### Q2: Is exposing OQTOPUS-specific fields as extra keyword-only parameters on `send()` the right way to bridge QDI's vendor-extension gap?
-
-QDI's `send(payload, task_type, shots)` contract has no vendor-extension
-mechanism, so a richer backend's extra parameters (e.g. `transpiler_info`)
-have no defined place to go.
-`OqtopusQdiClient.send()` accepts OQTOPUS's extra `OqtopusJobSpec` fields
-as keyword-only parameters beyond QDI's 3-argument contract.
-Is this an acceptable way to bridge the gap.
-
-*Asked against: v0.1.*
-
-### Answered
-
-#### Q1: Is it correct that `OqtopusQdiClient` accepts `device_id` in its constructor?
+### Q1: Is it correct that `OqtopusQdiClient` accepts `device_id` in its constructor?
 
 qdi-demo's Python `QdiClient` does not use `device_id` at all. Since
 OQTOPUS requires one, this project added it as a constructor argument on
@@ -82,7 +67,25 @@ every available device, and `send()`/`monitor()`/`receive()`/
 `estimate_resources()` each take `device_id`. The constructor no longer
 accepts or defaults `device_id`.
 
-#### Q3: Should QDI add a status for "not supported by this device", distinct from "attempted and failed"?
+### Q2: Is exposing OQTOPUS-specific fields as extra keyword-only parameters on `send()` the right way to bridge QDI's vendor-extension gap?
+
+QDI's `send(payload, task_type, shots)` contract has no vendor-extension
+mechanism, so a richer backend's extra parameters (e.g. `transpiler_info`)
+have no defined place to go.
+`OqtopusQdiClient.send()` accepts OQTOPUS's extra `OqtopusJobSpec` fields
+as keyword-only parameters beyond QDI's 3-argument contract.
+Is this an acceptable way to bridge the gap.
+
+*Asked against: v0.1. Answered in v0.2 (§3.1, §3.2).*
+
+**Answer:** §3.1 adds a `supported_extensions` descriptor field, and §3.2
+adds a matching `extensions` parameter on `send()`, with undeclared keys
+required to be rejected rather than silently dropped. The individual
+keyword-only parameters were replaced with a single `extensions` mapping,
+validated against a `_SUPPORTED_EXTENSIONS` list shared between descriptor
+construction and validation.
+
+### Q3: Should QDI add a status for "not supported by this device", distinct from "attempted and failed"?
 
 OQTOPUS has no resource-estimation capability, so `estimate_resources()`
 must fail whenever it is called. It currently returns
@@ -100,7 +103,7 @@ for a dedicated status code: a spec-compliant Host checks
 `estimate_resources()` on a device that reports `false`. For a Host that
 calls it anyway, `ERROR_ESTIMATION_FAILED` is sufficient.
 
-#### Q4: Is it acceptable to map to the closest existing `QdiStatus` when no code corresponds exactly?
+### Q4: Is it acceptable to map to the closest existing `QdiStatus` when no code corresponds exactly?
 
 Example: OQTOPUS's `OqtopusStorageError` (an S3 upload failure during
 `send()`, with no HTTP status of its own) has no exact `QdiStatus`
@@ -122,6 +125,10 @@ confirms the approximation approach this project already took.
 - G3 (`max_shots`) removed: no longer a required descriptor field per
   §3.1. OQTOPUS still publishes no per-device shot limit, but QDI no
   longer asks.
+- Q1 resolved.
+- Q2 resolved.
+- Q3 resolved.
+- Q4 resolved.
 
 ### v0.1
 
