@@ -180,6 +180,9 @@ class OqtopusQdiClient:
             # GAP(send-partial-failure): submit_job()'s S3 upload step
             # can fail independently of its two HTTP calls, with no HTTP
             # status of its own to translate. See docs/gap-analysis.md (Q4).
+            # QDI v0.2 §4 requires mapping to the closest standard error
+            # code rather than inventing a new one, so ERROR_CONNECTION_FAILED
+            # is used as the nearest fit.
             raise QdiError(QdiStatus.ERROR_CONNECTION_FAILED, str(exc)) from exc
         return response.job_id
 

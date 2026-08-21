@@ -20,6 +20,10 @@ _HTTP_STATUS_TO_QDI_STATUS: dict[int, QdiStatus] = {
 def resolve_qdi_status(status_code: int) -> QdiStatus:
     """Map an OQTOPUS HTTP status code to the closest matching `QdiStatus`.
 
+    QDI v0.2 §4 states: "When mapping complex driver errors to QDI,
+    implementations MUST map to the closest standard error code." This
+    function is that mapping for OQTOPUS's HTTP status codes.
+
     Args:
         status_code: HTTP status code from a `UserApiError`.
 
