@@ -125,11 +125,8 @@ confirms the approximation approach this project already took.
 - G3 (`max_shots`) removed: no longer a required descriptor field per
   §3.1. OQTOPUS still publishes no per-device shot limit, but QDI no
   longer asks.
-- Q1 resolved.
-- Q2 resolved.
-- Q3 resolved.
-- Q4 resolved.
+- Q1-Q4 resolved.
 
 ### v0.1
 
-To be back-filled with the original v0.1 evaluation: initial G1-G4, Q1-Q4.
+Initial evaluation: G1-G4, Q1-Q4.

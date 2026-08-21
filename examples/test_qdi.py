@@ -21,6 +21,10 @@ usable call order is the reverse of qdi.h's listed order.
 `send()`/`monitor()`/`receive()`/`estimate_resources()` each take the
 target `device_id` explicitly.
 
+`send()` also demonstrates the ``extensions`` mechanism: a key outside the
+descriptor's `supported_extensions` is rejected up front, and a declared
+key (`transpiler_info`) is forwarded to OQTOPUS.
+
 Usage:
     python examples/test_qdi.py <device_id>
 
@@ -94,8 +98,30 @@ def test_full_lifecycle(device_id: str) -> None:
     descriptor = next(d for d in descriptors if d["device_id"] == device_id)
     assert descriptor["device_id"] == device_id
 
+    print("Attempting Send with an undeclared extensions key (should fail)...")
+    try:
+        client.send(
+            device_id,
+            TASK_PAYLOAD,
+            "openqasm3",
+            shots=SHOTS,
+            extensions={"not_a_declared_key": True},
+        )
+    except QdiError as exc:
+        assert exc.status == QdiStatus.ERROR_INVALID_ARGUMENT
+        print("Successfully rejected undeclared extensions key:", exc)
+    else:
+        msg = "send() should reject an extensions key outside supported_extensions"
+        raise AssertionError(msg)
+
     print("Running Send...")
-    task_id = client.send(device_id, TASK_PAYLOAD, "openqasm3", shots=SHOTS)
+    task_id = client.send(
+        device_id,
+        TASK_PAYLOAD,
+        "openqasm3",
+        shots=SHOTS,
+        extensions={"transpiler_info": {"transpiler_lib": "qiskit"}},
+    )
     print("Task ID generated:", task_id)
 
     print("Monitoring status...")

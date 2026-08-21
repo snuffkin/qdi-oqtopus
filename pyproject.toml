@@ -1,6 +1,6 @@
 [project]
 name = "qdi-oqtopus"
-version = "0.1.0"
+version = "0.2.0"
 description = "OQTOPUS implementation of the QDI (Quantum Device Interface)."
 readme = "README.md"
 requires-python = ">=3.11,<4.0"

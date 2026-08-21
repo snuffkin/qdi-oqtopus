@@ -11,7 +11,7 @@
 ## Overview
 
 **QDI OQTOPUS** implements the client-side method surface of QDI (Quantum
-Device Interface, v0.1 Conceptual Draft) on top of [OQTOPUS
+Device Interface, v0.2) on top of [OQTOPUS
 Cloud](https://github.com/oqtopus-team/oqtopus-client), so that OQTOPUS can
 be addressed through QDI's `discover` / `authenticate` / `send` / `monitor`
 / `receive` / `estimate_resources` surface.
