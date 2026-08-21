@@ -184,13 +184,8 @@ def test_send_submits_a_sampling_job_and_returns_job_id() -> None:
     assert submitted_spec.shots == 500
 
 
-def test_send_forwards_oqtopus_only_keyword_arguments() -> None:
-    """name/description/transpiler_info/simulator_info/mitigation_info pass through.
-
-    These have no QDI counterpart (question Q2) and are only reachable by a
-    caller who steps outside QDI's `send(device_id, task_payload, task_type,
-    shots)` contract.
-    """
+def test_send_forwards_declared_extensions() -> None:
+    """Extension keys declared in supported_extensions pass through to OQTOPUS."""
     mock_client = _make_mock_oqtopus_client()
     register_response = MagicMock(spec=JobsRegisterJobResponse)
     register_response.job_id = "job-1"
@@ -201,19 +196,35 @@ def test_send_forwards_oqtopus_only_keyword_arguments() -> None:
         "dev1",
         b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
         "openqasm3",
-        name="my-job",
-        description="from qdi-oqtopus",
-        transpiler_info={"transpiler_lib": "qiskit"},
-        simulator_info={"n_shots": 100},
-        mitigation_info={"pseudo_inverse": True},
+        extensions={
+            "name": "my-job",
+            "description": "from qdi-oqtopus",
+            "transpiler_info": {"transpiler_lib": "qiskit"},
+            "mitigation_info": {"pseudo_inverse": True},
+        },
     )
 
     submitted_spec = mock_client.submit_job.call_args[0][0]
     assert submitted_spec.name == "my-job"
     assert submitted_spec.description == "from qdi-oqtopus"
     assert submitted_spec.transpiler_info == {"transpiler_lib": "qiskit"}
-    assert submitted_spec.simulator_info == {"n_shots": 100}
     assert submitted_spec.mitigation_info == {"pseudo_inverse": True}
+
+
+def test_send_rejects_undeclared_extension_key_without_calling_oqtopus() -> None:
+    """§3.2: an undeclared extensions key must be rejected, not silently dropped."""
+    mock_client = _make_mock_oqtopus_client()
+    client = _make_authenticated_client(mock_client)
+
+    with pytest.raises(QdiError) as exc_info:
+        client.send(
+            "dev1",
+            b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
+            "openqasm3",
+            extensions={"operator": []},
+        )
+    assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT
+    mock_client.submit_job.assert_not_called()
 
 
 def test_send_translates_user_api_error() -> None:

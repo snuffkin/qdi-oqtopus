@@ -1,6 +1,6 @@
 """QDI client protocol definition."""
 
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -37,6 +37,8 @@ class QdiClient(Protocol):
         task_payload: bytes,
         task_type: str,
         shots: int = 100,
+        *,
+        extensions: dict[str, Any] | None = None,
     ) -> str:
         """Submit an opaque task payload to a targeted device.
 
@@ -45,6 +47,8 @@ class QdiClient(Protocol):
             task_payload: Opaque bytes representing the circuit or pulse schedule.
             task_type: Format/type identifier (e.g. ``"openqasm3"``).
             shots: Execution shots limit.
+            extensions: Vendor-specific parameters declared in the device's
+                `supported_extensions`.
 
         Returns:
             The generated task ID.
@@ -86,6 +90,8 @@ class QdiClient(Protocol):
         task_payload: bytes,
         task_type: str,
         shots: int = 100,
+        *,
+        extensions: dict[str, Any] | None = None,
     ) -> dict:
         """Dry-run a task on a targeted device to estimate required resources or cost.
 
@@ -94,6 +100,8 @@ class QdiClient(Protocol):
             task_payload: Opaque bytes representing the circuit or pulse schedule.
             task_type: Format/type identifier.
             shots: Execution shots limit.
+            extensions: Vendor-specific parameters declared in the device's
+                `supported_extensions`.
 
         Returns:
             Estimation result as a JSON-compatible dict.

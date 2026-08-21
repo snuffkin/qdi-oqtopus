@@ -11,6 +11,7 @@ from qdi_oqtopus.mapping import (
     build_job_spec,
     map_job_status,
     map_task_type,
+    validate_extensions,
 )
 from qdi_oqtopus.types import QdiStatus, QdiTaskStatus
 
@@ -62,6 +63,12 @@ def test_build_device_descriptor_maps_available_device() -> None:
     assert descriptor.num_qubits == 16
     assert descriptor.supported_task_types == ["openqasm3"]
     assert descriptor.supported_auth_methods == ["token"]
+    assert descriptor.supported_extensions == [
+        "name",
+        "description",
+        "transpiler_info",
+        "mitigation_info",
+    ]
     assert descriptor.supports_estimation is False
 
 
@@ -110,24 +117,37 @@ def test_build_job_spec_decodes_payload_and_maps_task_type() -> None:
     assert spec.shots == 1000
 
 
-def test_build_job_spec_forwards_vendor_extension_defaults() -> None:
-    """transpiler_info/simulator_info/mitigation_info/name/description pass through."""
+def test_build_job_spec_forwards_extensions() -> None:
+    """name/description/transpiler_info/mitigation_info extensions pass through."""
     spec = build_job_spec(
         device_id="dev1",
         task_payload=b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
         task_type="openqasm3",
         shots=100,
-        name="my-job",
-        description="from qdi-oqtopus",
-        transpiler_info={"transpiler_lib": "qiskit"},
-        simulator_info={"n_shots": 100},
-        mitigation_info={"pseudo_inverse": True},
+        extensions={
+            "name": "my-job",
+            "description": "from qdi-oqtopus",
+            "transpiler_info": {"transpiler_lib": "qiskit"},
+            "mitigation_info": {"pseudo_inverse": True},
+        },
     )
     assert spec.name == "my-job"
     assert spec.description == "from qdi-oqtopus"
     assert spec.transpiler_info == {"transpiler_lib": "qiskit"}
-    assert spec.simulator_info == {"n_shots": 100}
     assert spec.mitigation_info == {"pseudo_inverse": True}
+
+
+def test_build_job_spec_rejects_undeclared_extension_key() -> None:
+    """An undeclared extensions key is rejected before any OQTOPUS call is built."""
+    with pytest.raises(QdiError) as exc_info:
+        build_job_spec(
+            device_id="dev1",
+            task_payload=b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
+            task_type="openqasm3",
+            shots=100,
+            extensions={"operator": [], "name": "my-job"},
+        )
+    assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT
 
 
 def test_build_job_spec_rejects_unsupported_task_type() -> None:
@@ -151,4 +171,32 @@ def test_build_job_spec_rejects_non_utf8_payload() -> None:
             task_type="openqasm3",
             shots=100,
         )
+    assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT
+
+
+@pytest.mark.parametrize(
+    "extensions",
+    [
+        None,
+        {},
+        {"name": "my-job"},
+        {"name": "my-job", "transpiler_info": {"transpiler_lib": "qiskit"}},
+    ],
+)
+def test_validate_extensions_accepts_declared_keys(extensions: dict | None) -> None:
+    """No error is raised when every extensions key is declared as supported."""
+    validate_extensions(extensions, ["name", "description", "transpiler_info"])
+
+
+@pytest.mark.parametrize(
+    "extensions",
+    [
+        {"operator": []},
+        {"name": "my-job", "operator": []},
+    ],
+)
+def test_validate_extensions_rejects_undeclared_keys(extensions: dict) -> None:
+    """An undeclared key raises QdiError with ERROR_INVALID_ARGUMENT."""
+    with pytest.raises(QdiError) as exc_info:
+        validate_extensions(extensions, ["name", "description", "transpiler_info"])
     assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT

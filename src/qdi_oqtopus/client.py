@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from json import dumps
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from oqtopus_client.services.client import OqtopusClient
 from oqtopus_client.services.config import OqtopusConfig
@@ -15,9 +15,6 @@ from oqtopus_client.services.storage import OqtopusStorageError
 from qdi_oqtopus.errors import QdiError, resolve_qdi_status
 from qdi_oqtopus.mapping import build_device_descriptors, build_job_spec, map_job_status
 from qdi_oqtopus.types import QdiStatus
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
 
 
 class OqtopusQdiClient:
@@ -111,48 +108,34 @@ class OqtopusQdiClient:
 
         self._client = candidate
 
-    # GAP(vendor-extension-kwargs): name/description/transpiler_info/
-    # simulator_info/mitigation_info have no QDI counterpart. See
-    # docs/gap-analysis.md (Q2).
-    def send(  # ruff: ignore[too-many-arguments]
+    def send(
         self,
         device_id: str,
         task_payload: bytes,
         task_type: str,
         shots: int = 100,
         *,
-        name: str | None = None,
-        description: str | None = None,
-        transpiler_info: Mapping[str, Any] | None = None,
-        simulator_info: Mapping[str, Any] | None = None,
-        mitigation_info: Mapping[str, Any] | None = None,
+        extensions: dict[str, Any] | None = None,
     ) -> str:
         """Submit an opaque task payload to a targeted device.
-
-        See docs/gap-analysis.md (Q2) on the OQTOPUS-only keyword arguments.
 
         Args:
             device_id: Target OQTOPUS device id.
             task_payload: UTF-8-encoded OPENQASM 3 program bytes.
             task_type: QDI task-type identifier; validated via `map_task_type`.
             shots: Execution shots limit.
-            name: OQTOPUS job name. Not part of QDI's `send()` contract.
-            description: OQTOPUS job description. Not part of QDI's `send()`
-                contract.
-            transpiler_info: OQTOPUS transpiler settings. Not part of QDI's
-                `send()` contract.
-            simulator_info: OQTOPUS simulator settings. Not part of QDI's
-                `send()` contract.
-            mitigation_info: OQTOPUS error-mitigation settings. Not part of
-                QDI's `send()` contract.
+            extensions: Vendor-specific parameters declared in the device
+                descriptor's `supported_extensions` (e.g. ``name``,
+                ``transpiler_info``). A key outside that set is rejected.
 
         Returns:
             The OQTOPUS job id, used as the QDI task id.
 
         Raises:
             QdiError: With `QdiStatus.ERROR_UNAUTHORIZED` if `authenticate()`
-                was not called first, or if job-spec construction or
-                submission fails.
+                was not called first; `QdiStatus.ERROR_INVALID_ARGUMENT` if
+                `extensions` contains an undeclared key; or if job-spec
+                construction or submission otherwise fails.
 
         """
         client = self._require_authenticated()
@@ -161,11 +144,7 @@ class OqtopusQdiClient:
             task_payload=task_payload,
             task_type=task_type,
             shots=shots,
-            name=name,
-            description=description,
-            transpiler_info=transpiler_info,
-            simulator_info=simulator_info,
-            mitigation_info=mitigation_info,
+            extensions=extensions,
         )
         try:
             response = client.submit_job(spec)
@@ -265,6 +244,8 @@ class OqtopusQdiClient:
         task_payload: bytes,  # ruff: ignore[unused-method-argument]
         task_type: str,  # ruff: ignore[unused-method-argument]
         shots: int = 100,  # ruff: ignore[unused-method-argument]
+        *,
+        extensions: dict[str, Any] | None = None,  # ruff: ignore[unused-method-argument]
     ) -> dict:
         """Dry-run a task on a targeted device to estimate required resources or cost.
 
@@ -276,6 +257,7 @@ class OqtopusQdiClient:
             task_payload: Unused; OQTOPUS never receives this call.
             task_type: Unused; OQTOPUS never receives this call.
             shots: Unused; OQTOPUS never receives this call.
+            extensions: Unused; OQTOPUS never receives this call.
 
         Raises:
             QdiError: Always, with `QdiStatus.ERROR_ESTIMATION_FAILED`.

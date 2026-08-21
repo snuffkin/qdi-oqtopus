@@ -32,12 +32,13 @@ def test_qdi_status_and_qdi_task_status_are_distinct_enums() -> None:
 
 
 def test_device_descriptor_holds_all_required_fields() -> None:
-    """QdiDeviceDescriptor exposes all 7 fields from mock_device_config.json."""
+    """QdiDeviceDescriptor exposes all 8 fields from mock_device_config.json."""
     descriptor = QdiDeviceDescriptor(
         device_id="dev1",
         display_name="Device One",
         supported_auth_methods=["token"],
         supported_task_types=["openqasm3"],
+        supported_extensions=["name"],
         is_ready=True,
         supports_estimation=False,
         num_qubits=4,
@@ -46,6 +47,7 @@ def test_device_descriptor_holds_all_required_fields() -> None:
     assert descriptor.display_name == "Device One"
     assert descriptor.supported_auth_methods == ["token"]
     assert descriptor.supported_task_types == ["openqasm3"]
+    assert descriptor.supported_extensions == ["name"]
     assert descriptor.is_ready is True
     assert descriptor.supports_estimation is False
     assert descriptor.num_qubits == 4
