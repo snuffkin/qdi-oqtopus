@@ -12,11 +12,12 @@ class QdiClient(Protocol):
     type; should be removed once it does.
     """
 
-    def discover(self) -> dict:
-        """Discover device properties, capabilities, and configuration.
+    def discover(self) -> list[dict]:
+        """Discover available devices, their capabilities, and configuration.
 
         Returns:
-            Device descriptor as a JSON-compatible dict.
+            One device descriptor per available device, as JSON-compatible
+            dicts.
 
         """
         ...
@@ -30,10 +31,17 @@ class QdiClient(Protocol):
         """
         ...
 
-    def send(self, task_payload: bytes, task_type: str, shots: int = 100) -> str:
-        """Submit an opaque task payload to the device.
+    def send(
+        self,
+        device_id: str,
+        task_payload: bytes,
+        task_type: str,
+        shots: int = 100,
+    ) -> str:
+        """Submit an opaque task payload to a targeted device.
 
         Args:
+            device_id: Unique identifier of the target device.
             task_payload: Opaque bytes representing the circuit or pulse schedule.
             task_type: Format/type identifier (e.g. ``"openqasm3"``).
             shots: Execution shots limit.
@@ -44,10 +52,11 @@ class QdiClient(Protocol):
         """
         ...
 
-    def monitor(self, task_id: str) -> tuple[int, dict]:
-        """Query the status of a submitted task.
+    def monitor(self, device_id: str, task_id: str) -> tuple[int, dict]:
+        """Query the status of a submitted task on a targeted device.
 
         Args:
+            device_id: Unique identifier of the target device.
             task_id: Unique task ID.
 
         Returns:
@@ -58,10 +67,11 @@ class QdiClient(Protocol):
         """
         ...
 
-    def receive(self, task_id: str) -> tuple[str, str]:
-        """Retrieve execution results for a completed task.
+    def receive(self, device_id: str, task_id: str) -> tuple[str, str]:
+        """Retrieve execution results for a completed task on a targeted device.
 
         Args:
+            device_id: Unique identifier of the target device.
             task_id: Unique task ID.
 
         Returns:
@@ -72,13 +82,15 @@ class QdiClient(Protocol):
 
     def estimate_resources(
         self,
+        device_id: str,
         task_payload: bytes,
         task_type: str,
         shots: int = 100,
     ) -> dict:
-        """Dry-run a task to estimate required resources or cost.
+        """Dry-run a task on a targeted device to estimate required resources or cost.
 
         Args:
+            device_id: Unique identifier of the target device.
             task_payload: Opaque bytes representing the circuit or pulse schedule.
             task_type: Format/type identifier.
             shots: Execution shots limit.

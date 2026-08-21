@@ -16,6 +16,11 @@ first here, not `send()` (see docs/gap-analysis.md, gap G4): OQTOPUS
 requires `BearerAuth` on every endpoint, including device lookup, so the
 usable call order is the reverse of qdi.h's listed order.
 
+``OqtopusQdiClient`` is scoped to one OQTOPUS connection, not one device:
+`discover()` returns every available device, and
+`send()`/`monitor()`/`receive()`/`estimate_resources()` each take the
+target `device_id` explicitly.
+
 Usage:
     python examples/test_qdi.py <device_id>
 
@@ -57,7 +62,7 @@ BAD_API_TOKEN = "not-a-real-token"
 def test_full_lifecycle(device_id: str) -> None:
     """Run authenticate, discover, send, monitor, receive, and estimate_resources."""
     print("Initializing QDI client...")
-    client = OqtopusQdiClient(device_id)
+    client = OqtopusQdiClient()
 
     print("Attempting Discover before authenticating (should fail)...")
     try:
@@ -84,18 +89,19 @@ def test_full_lifecycle(device_id: str) -> None:
     print("Authenticated successfully!")
 
     print("Running Discover...")
-    descriptor = client.discover()
-    print("Descriptor:", descriptor)
+    descriptors = client.discover()
+    print("Descriptors:", descriptors)
+    descriptor = next(d for d in descriptors if d["device_id"] == device_id)
     assert descriptor["device_id"] == device_id
 
     print("Running Send...")
-    task_id = client.send(TASK_PAYLOAD, "openqasm3", shots=SHOTS)
+    task_id = client.send(device_id, TASK_PAYLOAD, "openqasm3", shots=SHOTS)
     print("Task ID generated:", task_id)
 
     print("Monitoring status...")
     status = QdiTaskStatus.QUEUED
     for _ in range(MONITOR_ATTEMPTS):
-        raw_status, advisory = client.monitor(task_id)
+        raw_status, advisory = client.monitor(device_id, task_id)
         status = QdiTaskStatus(raw_status)
         print(f"Status: {status.name}, Advisory info: {advisory}")
         if status in _TERMINAL_STATUSES:
@@ -108,14 +114,14 @@ def test_full_lifecycle(device_id: str) -> None:
     print("Task completed!")
 
     print("Receiving results...")
-    result, result_type = client.receive(task_id)
+    result, result_type = client.receive(device_id, task_id)
     print(f"Result format: {result_type}")
     print(f"Result content: {result}")
     assert result_type == "counts"
 
     print("Running Resource Estimation (expected to fail; see gap G2)...")
     try:
-        client.estimate_resources(TASK_PAYLOAD, "openqasm3", shots=SHOTS)
+        client.estimate_resources(device_id, TASK_PAYLOAD, "openqasm3", shots=SHOTS)
     except QdiError as exc:
         assert exc.status == QdiStatus.ERROR_ESTIMATION_FAILED
         print("Confirmed documented failure:", exc)

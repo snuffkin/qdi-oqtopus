@@ -36,12 +36,12 @@ def _make_mock_oqtopus_client() -> MagicMock:
 def _make_authenticated_client(
     mock_client: MagicMock | None = None,
 ) -> OqtopusQdiClient:
-    return OqtopusQdiClient("dev1", client=mock_client or _make_mock_oqtopus_client())
+    return OqtopusQdiClient(client=mock_client or _make_mock_oqtopus_client())
 
 
 def test_oqtopus_qdi_client_satisfies_qdi_client_protocol() -> None:
     """`OqtopusQdiClient` structurally satisfies the `QdiClient` protocol."""
-    assert isinstance(OqtopusQdiClient("dev1"), QdiClient)
+    assert isinstance(OqtopusQdiClient(), QdiClient)
 
 
 def test_injected_client_is_treated_as_already_authenticated(
@@ -49,10 +49,10 @@ def test_injected_client_is_treated_as_already_authenticated(
 ) -> None:
     """Supplying `client=` at construction skips the verification round-trip."""
     mock_client = _make_mock_oqtopus_client()
-    mock_client.get_device.return_value = make_oqtopus_device()
+    mock_client.list_devices.return_value = [make_oqtopus_device()]
     oqtopus_client_class = mocker.patch("qdi_oqtopus.client.OqtopusClient")
 
-    client = OqtopusQdiClient("dev1", client=mock_client)
+    client = OqtopusQdiClient(client=mock_client)
     client.discover()
 
     oqtopus_client_class.assert_not_called()
@@ -64,10 +64,10 @@ def test_injected_client_is_treated_as_already_authenticated(
     [
         lambda client: client.discover(),
         lambda client: client.send(
-            b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3"
+            "dev1", b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3"
         ),
-        lambda client: client.monitor("job-1"),
-        lambda client: client.receive("job-1"),
+        lambda client: client.monitor("dev1", "job-1"),
+        lambda client: client.receive("dev1", "job-1"),
     ],
 )
 def test_methods_raise_unauthorized_before_authenticate_is_called(
@@ -79,7 +79,7 @@ def test_methods_raise_unauthorized_before_authenticate_is_called(
     `authenticate()` call before anything else works. See
     docs/gap-analysis.md, gap G4.
     """
-    client = OqtopusQdiClient("dev1")
+    client = OqtopusQdiClient()
 
     with pytest.raises(QdiError) as exc_info:
         call(client)
@@ -92,7 +92,7 @@ def test_authenticate_builds_and_verifies_a_client(mocker: MockerFixture) -> Non
     oqtopus_client_class = mocker.patch(
         "qdi_oqtopus.client.OqtopusClient", return_value=mock_client
     )
-    client = OqtopusQdiClient("dev1")
+    client = OqtopusQdiClient()
 
     client.authenticate({"base_url": "https://example.test", "api_token": "new"})
 
@@ -113,7 +113,7 @@ def test_authenticate_builds_and_verifies_a_client(mocker: MockerFixture) -> Non
 )
 def test_authenticate_rejects_incomplete_credentials(credentials_dict: dict) -> None:
     """Missing `base_url` or `api_token` surfaces as ERROR_INVALID_ARGUMENT."""
-    client = OqtopusQdiClient("dev1")
+    client = OqtopusQdiClient()
 
     with pytest.raises(QdiError) as exc_info:
         client.authenticate(credentials_dict)
@@ -127,33 +127,35 @@ def test_authenticate_raises_qdi_error_on_invalid_token(
     mock_client = _make_mock_oqtopus_client()
     mock_client.get_api_token_status.side_effect = UserApiError(401, "invalid")
     mocker.patch("qdi_oqtopus.client.OqtopusClient", return_value=mock_client)
-    client = OqtopusQdiClient("dev1")
+    client = OqtopusQdiClient()
 
     with pytest.raises(QdiError) as exc_info:
         client.authenticate({"base_url": "https://example.test", "api_token": "bad"})
     assert exc_info.value.status == QdiStatus.ERROR_UNAUTHORIZED
 
 
-def test_discover_returns_device_descriptor_dict() -> None:
-    """discover() returns the mapped device descriptor as a dict."""
+def test_discover_returns_a_device_descriptor_dict_per_device() -> None:
+    """discover() returns one mapped device descriptor dict per known device."""
     mock_client = _make_mock_oqtopus_client()
-    mock_client.get_device.return_value = make_oqtopus_device(
-        status="available", n_qubits=8
-    )
+    mock_client.list_devices.return_value = [
+        make_oqtopus_device(device_id="dev1", status="available", n_qubits=8),
+        make_oqtopus_device(device_id="dev2", status="unavailable", n_qubits=4),
+    ]
     client = _make_authenticated_client(mock_client)
 
     result = client.discover()
 
-    mock_client.get_device.assert_called_once_with("dev1")
-    assert result["device_id"] == "dev1"
-    assert result["is_ready"] is True
-    assert result["num_qubits"] == 8
+    mock_client.list_devices.assert_called_once_with()
+    assert [descriptor["device_id"] for descriptor in result] == ["dev1", "dev2"]
+    assert result[0]["is_ready"] is True
+    assert result[0]["num_qubits"] == 8
+    assert result[1]["is_ready"] is False
 
 
 def test_discover_translates_user_api_error() -> None:
-    """A device lookup failure surfaces as QdiError."""
+    """A device listing failure surfaces as QdiError."""
     mock_client = _make_mock_oqtopus_client()
-    mock_client.get_device.side_effect = UserApiError(404, "device not found")
+    mock_client.list_devices.side_effect = UserApiError(404, "no devices found")
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
@@ -170,7 +172,10 @@ def test_send_submits_a_sampling_job_and_returns_job_id() -> None:
     client = _make_authenticated_client(mock_client)
 
     task_id = client.send(
-        b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3", shots=500
+        "dev1",
+        b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
+        "openqasm3",
+        shots=500,
     )
 
     assert task_id == "job-1"
@@ -183,8 +188,8 @@ def test_send_forwards_oqtopus_only_keyword_arguments() -> None:
     """name/description/transpiler_info/simulator_info/mitigation_info pass through.
 
     These have no QDI counterpart (question Q2) and are only reachable by a
-    caller who steps outside QDI's `send(task_payload, task_type, shots)`
-    contract.
+    caller who steps outside QDI's `send(device_id, task_payload, task_type,
+    shots)` contract.
     """
     mock_client = _make_mock_oqtopus_client()
     register_response = MagicMock(spec=JobsRegisterJobResponse)
@@ -193,6 +198,7 @@ def test_send_forwards_oqtopus_only_keyword_arguments() -> None:
     client = _make_authenticated_client(mock_client)
 
     client.send(
+        "dev1",
         b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;',
         "openqasm3",
         name="my-job",
@@ -217,7 +223,9 @@ def test_send_translates_user_api_error() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.send(b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3")
+        client.send(
+            "dev1", b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3"
+        )
     assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT
 
 
@@ -228,7 +236,9 @@ def test_send_translates_storage_error_as_connection_failed() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.send(b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3")
+        client.send(
+            "dev1", b'OPENQASM 3; include "stdgates.inc"; qubit[1] q;', "openqasm3"
+        )
     assert exc_info.value.status == QdiStatus.ERROR_CONNECTION_FAILED
 
 
@@ -238,7 +248,7 @@ def test_send_rejects_unsupported_task_type_before_calling_oqtopus() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.send(b"irrelevant", "qir")
+        client.send("dev1", b"irrelevant", "qir")
     assert exc_info.value.status == QdiStatus.ERROR_UNSUPPORTED_FORMAT
     mock_client.submit_job.assert_not_called()
 
@@ -251,7 +261,7 @@ def test_monitor_maps_status_and_reports_advisory() -> None:
     )
     client = _make_authenticated_client(mock_client)
 
-    status, advisory = client.monitor("job-1")
+    status, advisory = client.monitor("dev1", "job-1")
 
     assert status == QdiTaskStatus.EXECUTING
     assert advisory == {"oqtopus_status": "running"}
@@ -264,7 +274,7 @@ def test_monitor_translates_user_api_error() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.monitor("missing")
+        client.monitor("dev1", "missing")
     assert exc_info.value.status == QdiStatus.ERROR_TASK_NOT_FOUND
 
 
@@ -276,7 +286,7 @@ def test_receive_returns_json_counts_and_result_type() -> None:
     mock_client.get_job.return_value = sampling_result
     client = _make_authenticated_client(mock_client)
 
-    payload, result_type = client.receive("job-1")
+    payload, result_type = client.receive("dev1", "job-1")
 
     assert json.loads(payload) == {"00": 51, "11": 49}
     assert result_type == "counts"
@@ -289,7 +299,7 @@ def test_receive_rejects_non_sampling_results() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.receive("job-1")
+        client.receive("dev1", "job-1")
     assert exc_info.value.status == QdiStatus.ERROR_UNKNOWN
 
 
@@ -300,7 +310,7 @@ def test_receive_translates_not_ready_as_qdi_error() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.receive("job-1")
+        client.receive("dev1", "job-1")
     assert exc_info.value.status == QdiStatus.ERROR_UNKNOWN
 
 
@@ -311,7 +321,7 @@ def test_receive_translates_user_api_error() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.receive("missing")
+        client.receive("dev1", "missing")
     assert exc_info.value.status == QdiStatus.ERROR_TASK_NOT_FOUND
 
 
@@ -321,7 +331,7 @@ def test_estimate_resources_always_raises_without_touching_oqtopus() -> None:
     client = _make_authenticated_client(mock_client)
 
     with pytest.raises(QdiError) as exc_info:
-        client.estimate_resources(b"irrelevant", "openqasm3", shots=100)
+        client.estimate_resources("dev1", b"irrelevant", "openqasm3", shots=100)
 
     assert exc_info.value.status == QdiStatus.ERROR_ESTIMATION_FAILED
     mock_client.assert_not_called()

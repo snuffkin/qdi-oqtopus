@@ -46,21 +46,12 @@ supporting it in the near future.
 
 | ID | Asked against | Status |
 |----|---------------|--------|
-| Q1 | v0.1 | active |
+| Q1 | v0.1 | answered in v0.2 (§3) |
 | Q2 | v0.1 | active |
 | Q3 | v0.1 | answered in v0.2 (§3.1) |
 | Q4 | v0.1 | answered in v0.2 (§4) |
 
 ### Active
-
-#### Q1: Is it correct that `OqtopusQdiClient` accepts `device_id` in its constructor?
-
-qdi-demo's Python `QdiClient` does not use `device_id` at all. Since
-OQTOPUS requires one, this project added it as a constructor argument on
-`OqtopusQdiClient`. Is this approach correct? An alternative would be to
-add `device_id` to each operation instead.
-
-*Asked against: v0.1.*
 
 #### Q2: Is exposing OQTOPUS-specific fields as extra keyword-only parameters on `send()` the right way to bridge QDI's vendor-extension gap?
 
@@ -74,6 +65,22 @@ Is this an acceptable way to bridge the gap.
 *Asked against: v0.1.*
 
 ### Answered
+
+#### Q1: Is it correct that `OqtopusQdiClient` accepts `device_id` in its constructor?
+
+qdi-demo's Python `QdiClient` does not use `device_id` at all. Since
+OQTOPUS requires one, this project added it as a constructor argument on
+`OqtopusQdiClient`. Is this approach correct? An alternative would be to
+add `device_id` to each operation instead.
+
+*Asked against: v0.1. Answered in v0.2 (§3).*
+
+**Answer:** §3 states that all operations except Discover MUST explicitly
+target a `device_id`, and that Discover itself MUST return a list of
+devices. `OqtopusQdiClient` was updated accordingly: `discover()` returns
+every available device, and `send()`/`monitor()`/`receive()`/
+`estimate_resources()` each take `device_id`. The constructor no longer
+accepts or defaults `device_id`.
 
 #### Q3: Should QDI add a status for "not supported by this device", distinct from "attempted and failed"?
 

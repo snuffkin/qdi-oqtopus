@@ -6,7 +6,7 @@ keeps the module fully testable without a network connection or a mocked
 transport.
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from oqtopus_client.rest.models.jobs_job_status import JobsJobStatus
@@ -93,6 +93,21 @@ def build_device_descriptor(device: OqtopusDevice) -> QdiDeviceDescriptor:
         supports_estimation=False,
         num_qubits=device.n_qubits,
     )
+
+
+def build_device_descriptors(
+    devices: Iterable[OqtopusDevice],
+) -> list[QdiDeviceDescriptor]:
+    """Build a `QdiDeviceDescriptor` for each of a list of OQTOPUS devices.
+
+    Args:
+        devices: Devices returned by ``OqtopusClient.list_devices()``.
+
+    Returns:
+        One QDI-shaped device descriptor per input device, in the same order.
+
+    """
+    return [build_device_descriptor(device) for device in devices]
 
 
 def build_job_spec(  # ruff: ignore[too-many-arguments]
