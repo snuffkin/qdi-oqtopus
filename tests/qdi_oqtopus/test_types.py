@@ -32,7 +32,7 @@ def test_qdi_status_and_qdi_task_status_are_distinct_enums() -> None:
 
 
 def test_device_descriptor_holds_all_required_fields() -> None:
-    """QdiDeviceDescriptor exposes all 8 fields from mock_device_config.json."""
+    """QdiDeviceDescriptor exposes all 7 fields from mock_device_config.json."""
     descriptor = QdiDeviceDescriptor(
         device_id="dev1",
         display_name="Device One",
@@ -41,7 +41,6 @@ def test_device_descriptor_holds_all_required_fields() -> None:
         is_ready=True,
         supports_estimation=False,
         num_qubits=4,
-        max_shots=None,
     )
     assert descriptor.device_id == "dev1"
     assert descriptor.display_name == "Device One"
@@ -50,4 +49,3 @@ def test_device_descriptor_holds_all_required_fields() -> None:
     assert descriptor.is_ready is True
     assert descriptor.supports_estimation is False
     assert descriptor.num_qubits == 4
-    assert descriptor.max_shots is None

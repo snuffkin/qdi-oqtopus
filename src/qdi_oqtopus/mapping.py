@@ -72,11 +72,6 @@ def map_task_type(task_type: str) -> str:
     raise QdiError(QdiStatus.ERROR_UNSUPPORTED_FORMAT, msg)
 
 
-# GAP(max_shots): placeholder value, not derived from OQTOPUS. See
-# docs/gap-analysis.md (G3).
-_PLACEHOLDER_MAX_SHOTS = 10000
-
-
 def build_device_descriptor(device: OqtopusDevice) -> QdiDeviceDescriptor:
     """Build a `QdiDeviceDescriptor` from an OQTOPUS device.
 
@@ -97,7 +92,6 @@ def build_device_descriptor(device: OqtopusDevice) -> QdiDeviceDescriptor:
         # estimation endpoint for any device. See docs/gap-analysis.md (G2).
         supports_estimation=False,
         num_qubits=device.n_qubits,
-        max_shots=_PLACEHOLDER_MAX_SHOTS,
     )
 
 

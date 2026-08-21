@@ -55,7 +55,6 @@ class QdiDeviceDescriptor:
         supports_estimation: Whether ``estimate_resources()`` is meaningful for
             this device.
         num_qubits: Qubit count, or ``None`` when not published.
-        max_shots: Maximum shots per task, or ``None`` when not published.
 
     """
 
@@ -66,4 +65,3 @@ class QdiDeviceDescriptor:
     is_ready: bool
     supports_estimation: bool
     num_qubits: int | None
-    max_shots: int | None
