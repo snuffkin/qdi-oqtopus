@@ -55,15 +55,12 @@ class OqtopusQdiClient:
             raise QdiError(QdiStatus.ERROR_UNAUTHORIZED, msg)
         return self._client
 
-    def discover(self) -> list[dict]:
+    def discover(self) -> dict:
         """Discover available devices, their capabilities, and configuration.
 
-        # GAP(discover-requires-auth): requires `authenticate()` first,
-        # the reverse of qdi.h's listed order. See docs/gap-analysis.md (G4).
-
         Returns:
-            One device descriptor per available device, as JSON-compatible
-            dicts.
+            A mapping with a single ``"devices"`` key, holding one device
+            descriptor per available device as JSON-compatible dicts.
 
         Raises:
             QdiError: With `QdiStatus.ERROR_UNAUTHORIZED` if `authenticate()`
@@ -75,16 +72,23 @@ class OqtopusQdiClient:
             devices = client.list_devices()
         except UserApiError as exc:
             raise QdiError(resolve_qdi_status(exc.status_code), exc.message) from exc
-        return [asdict(descriptor) for descriptor in build_device_descriptors(devices)]
+        return {
+            "devices": [
+                asdict(descriptor) for descriptor in build_device_descriptors(devices)
+            ],
+        }
 
-    def authenticate(self, credentials_dict: dict) -> None:
+    def authenticate(
+        self,
+        device_id: str,  # ruff: ignore[unused-method-argument]
+        credentials_dict: dict,
+    ) -> None:
         """Establish the OQTOPUS client used for all other calls.
 
-        # GAP(authenticate): only validates a token obtained out-of-band;
-        # OQTOPUS has no in-band credential exchange. See
-        # docs/gap-analysis.md (G4).
-
         Args:
+            device_id: Accepted to match qdi.h's `qdi_authenticate` signature,
+                but unused: OQTOPUS validates tokens platform-wide via
+                `get_api_token_status()` rather than per device.
             credentials_dict: Must contain ``base_url`` and ``api_token``.
 
         Raises:
@@ -114,7 +118,6 @@ class OqtopusQdiClient:
         task_payload: bytes,
         task_type: str,
         shots: int = 100,
-        *,
         extensions: dict[str, Any] | None = None,
     ) -> str:
         """Submit an opaque task payload to a targeted device.
@@ -174,7 +177,7 @@ class OqtopusQdiClient:
 
         Returns:
             A ``(status, advisory)`` pair. ``advisory`` always carries the
-            original OQTOPUS status string; see docs/gap-analysis.md (G1).
+            original OQTOPUS status string.
 
         Raises:
             QdiError: With `QdiStatus.ERROR_UNAUTHORIZED` if `authenticate()`
@@ -195,9 +198,6 @@ class OqtopusQdiClient:
         task_id: str,
     ) -> tuple[str, str]:
         """Retrieve execution results for a completed task on a targeted device.
-
-        # GAP(receive-not-ready): QDI has no "not ready yet" status, so a
-        # task still ``registered`` on OQTOPUS surfaces as `ERROR_UNKNOWN`.
 
         ``device_id`` is accepted for QDI conformance but unused here:
         OQTOPUS job ids are already globally unique and self-describing, so
@@ -244,13 +244,11 @@ class OqtopusQdiClient:
         task_payload: bytes,  # ruff: ignore[unused-method-argument]
         task_type: str,  # ruff: ignore[unused-method-argument]
         shots: int = 100,  # ruff: ignore[unused-method-argument]
-        *,
         extensions: dict[str, Any] | None = None,  # ruff: ignore[unused-method-argument]
     ) -> dict:
         """Dry-run a task on a targeted device to estimate required resources or cost.
 
-        Always fails: OQTOPUS has no such capability. See
-        docs/gap-analysis.md (G2).
+        Always fails: OQTOPUS has no such capability.
 
         Args:
             device_id: Unused; OQTOPUS never receives this call.

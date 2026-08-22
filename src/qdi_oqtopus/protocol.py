@@ -5,27 +5,23 @@ from typing import Any, Protocol, runtime_checkable
 
 @runtime_checkable
 class QdiClient(Protocol):
-    """Structural type describing the QDI client method surface.
+    """Structural type describing the QDI client method surface."""
 
-    Named to match qdi-demo's ``QdiClient`` in ``qdi_python.py``. A
-    hand-derived stopgap, since QDI does not publish this as a reusable
-    type; should be removed once it does.
-    """
-
-    def discover(self) -> list[dict]:
+    def discover(self) -> dict:
         """Discover available devices, their capabilities, and configuration.
 
         Returns:
-            One device descriptor per available device, as JSON-compatible
-            dicts.
+            A mapping with a single ``"devices"`` key, holding one device
+            descriptor per available device as JSON-compatible dicts.
 
         """
         ...
 
-    def authenticate(self, credentials_dict: dict) -> None:
+    def authenticate(self, device_id: str, credentials_dict: dict) -> None:
         """Authenticate and establish trust with the device.
 
         Args:
+            device_id: Unique identifier of the target device.
             credentials_dict: Credentials payload (e.g. tokens, keys).
 
         """
@@ -37,7 +33,6 @@ class QdiClient(Protocol):
         task_payload: bytes,
         task_type: str,
         shots: int = 100,
-        *,
         extensions: dict[str, Any] | None = None,
     ) -> str:
         """Submit an opaque task payload to a targeted device.
@@ -90,7 +85,6 @@ class QdiClient(Protocol):
         task_payload: bytes,
         task_type: str,
         shots: int = 100,
-        *,
         extensions: dict[str, Any] | None = None,
     ) -> dict:
         """Dry-run a task on a targeted device to estimate required resources or cost.

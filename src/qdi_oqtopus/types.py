@@ -43,9 +43,6 @@ class QdiTaskStatus(IntEnum):
 class QdiDeviceDescriptor:
     """Device descriptor returned by ``discover()``.
 
-    Field set matches qdi-demo's ``mock_device_config.json``; QDI itself
-    does not define a schema for this descriptor.
-
     Attributes:
         device_id: Unique device identifier.
         display_name: Human-readable device name.

@@ -73,12 +73,7 @@ def test_injected_client_is_treated_as_already_authenticated(
 def test_methods_raise_unauthorized_before_authenticate_is_called(
     call: Callable[[OqtopusQdiClient], object],
 ) -> None:
-    """No method authenticates on the caller's behalf; each requires it first.
-
-    This matches qdi-demo's own clients, which also require an explicit
-    `authenticate()` call before anything else works. See
-    docs/gap-analysis.md, gap G4.
-    """
+    """No method authenticates on the caller's behalf; each requires it first."""
     client = OqtopusQdiClient()
 
     with pytest.raises(QdiError) as exc_info:
@@ -94,7 +89,9 @@ def test_authenticate_builds_and_verifies_a_client(mocker: MockerFixture) -> Non
     )
     client = OqtopusQdiClient()
 
-    client.authenticate({"base_url": "https://example.test", "api_token": "new"})
+    client.authenticate(
+        "dev1", {"base_url": "https://example.test", "api_token": "new"}
+    )
 
     oqtopus_client_class.assert_called_once()
     used_config = oqtopus_client_class.call_args[0][0]
@@ -116,7 +113,7 @@ def test_authenticate_rejects_incomplete_credentials(credentials_dict: dict) -> 
     client = OqtopusQdiClient()
 
     with pytest.raises(QdiError) as exc_info:
-        client.authenticate(credentials_dict)
+        client.authenticate("dev1", credentials_dict)
     assert exc_info.value.status == QdiStatus.ERROR_INVALID_ARGUMENT
 
 
@@ -130,8 +127,40 @@ def test_authenticate_raises_qdi_error_on_invalid_token(
     client = OqtopusQdiClient()
 
     with pytest.raises(QdiError) as exc_info:
-        client.authenticate({"base_url": "https://example.test", "api_token": "bad"})
+        client.authenticate(
+            "dev1", {"base_url": "https://example.test", "api_token": "bad"}
+        )
     assert exc_info.value.status == QdiStatus.ERROR_UNAUTHORIZED
+
+
+@pytest.mark.parametrize("device_id", ["dev1", "some-other-device"])
+def test_authenticate_ignores_device_id(device_id: str, mocker: MockerFixture) -> None:
+    """authenticate() behaves identically regardless of the device_id passed in.
+
+    device_id is accepted only to match qdi.h's `qdi_authenticate` signature;
+    OQTOPUS validates tokens platform-wide, not per device.
+    """
+    mock_client = _make_mock_oqtopus_client()
+    mocker.patch("qdi_oqtopus.client.OqtopusClient", return_value=mock_client)
+    client = OqtopusQdiClient()
+
+    client.authenticate(
+        device_id, {"base_url": "https://example.test", "api_token": "new"}
+    )
+
+    mock_client.get_api_token_status.assert_called_once_with()
+
+
+def test_discover_returns_a_devices_envelope() -> None:
+    """discover() wraps device descriptors in a `{"devices": [...]}` envelope."""
+    mock_client = _make_mock_oqtopus_client()
+    mock_client.list_devices.return_value = [make_oqtopus_device()]
+    client = _make_authenticated_client(mock_client)
+
+    result = client.discover()
+
+    assert set(result) == {"devices"}
+    assert isinstance(result["devices"], list)
 
 
 def test_discover_returns_a_device_descriptor_dict_per_device() -> None:
@@ -143,13 +172,16 @@ def test_discover_returns_a_device_descriptor_dict_per_device() -> None:
     ]
     client = _make_authenticated_client(mock_client)
 
-    result = client.discover()
+    descriptors = client.discover()["devices"]
 
     mock_client.list_devices.assert_called_once_with()
-    assert [descriptor["device_id"] for descriptor in result] == ["dev1", "dev2"]
-    assert result[0]["is_ready"] is True
-    assert result[0]["num_qubits"] == 8
-    assert result[1]["is_ready"] is False
+    assert [descriptor["device_id"] for descriptor in descriptors] == [
+        "dev1",
+        "dev2",
+    ]
+    assert descriptors[0]["is_ready"] is True
+    assert descriptors[0]["num_qubits"] == 8
+    assert descriptors[1]["is_ready"] is False
 
 
 def test_discover_translates_user_api_error() -> None:
@@ -212,7 +244,7 @@ def test_send_forwards_declared_extensions() -> None:
 
 
 def test_send_rejects_undeclared_extension_key_without_calling_oqtopus() -> None:
-    """§3.2: an undeclared extensions key must be rejected, not silently dropped."""
+    """An undeclared extensions key must be rejected, not silently dropped."""
     mock_client = _make_mock_oqtopus_client()
     client = _make_authenticated_client(mock_client)
 
