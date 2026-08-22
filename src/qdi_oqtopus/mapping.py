@@ -40,8 +40,7 @@ _SUPPORTED_EXTENSIONS: tuple[str, ...] = (
 def map_job_status(status: JobsJobStatus) -> tuple[QdiTaskStatus, dict[str, str]]:
     """Map an OQTOPUS job status to a QDI task status plus advisory metadata.
 
-    Collapses OQTOPUS's 7 statuses onto QDI's 5; see
-    docs/gap-analysis.md (G1).
+    Collapses OQTOPUS's 7 statuses onto QDI's 5.
 
     Args:
         status: OQTOPUS job status, as returned by ``get_job_status()``.
@@ -85,9 +84,7 @@ def validate_extensions(
 ) -> None:
     """Reject any ``extensions`` key not declared in ``supported_extensions``.
 
-    QDI v0.2 §3.2 requires a Device to immediately reject a submission
-    that contains an undeclared extension key, rather than silently
-    dropping it.
+    Rejects immediately rather than silently dropping the unknown key.
 
     Args:
         extensions: The Host-supplied ``extensions`` mapping, if any.
@@ -123,8 +120,8 @@ def build_device_descriptor(device: OqtopusDevice) -> QdiDeviceDescriptor:
         supported_task_types=["openqasm3"],
         supported_extensions=list(_SUPPORTED_EXTENSIONS),
         is_ready=device.status == "available",
-        # GAP(supports_estimation): OQTOPUS has no dry-run resource/cost
-        # estimation endpoint for any device. See docs/gap-analysis.md (G2).
+        # OQTOPUS has no dry-run resource/cost estimation endpoint for any
+        # device.
         supports_estimation=False,
         num_qubits=device.n_qubits,
     )

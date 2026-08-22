@@ -1,20 +1,12 @@
-"""qdi-oqtopus version of qdi-demo's full-lifecycle demo, against OQTOPUS.
+"""Full-lifecycle demo of ``OqtopusQdiClient`` against a real OQTOPUS device.
 
-See:
-https://github.com/shassinger/qdi-demo/blob/main/qdi-core/python/test_qdi.py
-
-Exercises authenticate() -> discover() -> send() -> monitor() -> receive()
-against a real OQTOPUS device, then demonstrates estimate_resources()'s
-documented failure (see docs/gap-analysis.md, gap G2).
+Exercises authenticate() -> discover() -> send() -> monitor() -> receive(),
+then demonstrates estimate_resources()'s documented failure.
 
 ``OqtopusQdiClient`` requires `authenticate()` to be called before any
-other method, exactly like qdi-demo's ``NativeQdiClient``, so this script
-first confirms that calling `discover()` too early fails the same way
-qdi-demo's own script confirms `send()` before `authenticate()` fails.
-Unlike qdi-demo, `discover()` is the method that requires authentication
-first here, not `send()` (see docs/gap-analysis.md, gap G4): OQTOPUS
-requires `BearerAuth` on every endpoint, including device lookup, so the
-usable call order is the reverse of qdi.h's listed order.
+other method, so this script first confirms that calling `discover()` too
+early fails, before authenticating for real and proceeding through the
+rest of the lifecycle.
 
 ``OqtopusQdiClient`` is scoped to one OQTOPUS connection, not one device:
 `discover()` returns every available device, and
@@ -76,7 +68,9 @@ def test_full_lifecycle(device_id: str) -> None:
 
     print("Attempting Authenticate with a bad token (should fail)...")
     try:
-        client.authenticate({"base_url": BASE_URL, "api_token": BAD_API_TOKEN})
+        client.authenticate(
+            device_id, {"base_url": BASE_URL, "api_token": BAD_API_TOKEN}
+        )
     except QdiError as exc:
         assert exc.status == QdiStatus.ERROR_UNAUTHORIZED
         print("Successfully rejected bad token:", exc)
@@ -85,11 +79,11 @@ def test_full_lifecycle(device_id: str) -> None:
         raise AssertionError(msg)
 
     print("Running Authenticate...")
-    client.authenticate({"base_url": BASE_URL, "api_token": API_TOKEN})
+    client.authenticate(device_id, {"base_url": BASE_URL, "api_token": API_TOKEN})
     print("Authenticated successfully!")
 
     print("Running Discover...")
-    descriptors = client.discover()
+    descriptors = client.discover()["devices"]
     print("Descriptors:", descriptors)
     descriptor = next(d for d in descriptors if d["device_id"] == device_id)
     assert descriptor["device_id"] == device_id

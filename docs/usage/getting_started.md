@@ -1,16 +1,13 @@
 # Getting Started
 
 `qdi-oqtopus` implements the client-side method surface of QDI (Quantum
-Device Interface, v0.1 Conceptual Draft) on top of OQTOPUS Cloud. It uses
+Device Interface, v0.2) on top of OQTOPUS Cloud. It uses
 [`oqtopus-client`](https://oqtopus-client.readthedocs.io/) to talk to
-OQTOPUS Cloud, and exposes the same 6 methods as QDI's
-[`QdiClient`](https://github.com/shassinger/qdi-demo/blob/main/qdi-core/python/qdi_python.py):
+OQTOPUS Cloud, and exposes the same 6 methods, with signatures following
+qdi-demo's server-side
+[`NativeQdiClient`](https://github.com/shassinger/qdi-demo/blob/main/qdi-core/python/qdi_python.py):
 `discover`, `authenticate`, `send`, `monitor`, `receive`, and
 `estimate_resources`.
-
-Every place where QDI and OQTOPUS do not map cleanly onto each other is
-tracked in [Gap Analysis](../gap-analysis.md). This guide focuses on the
-parts that do work.
 
 ## Installation
 
@@ -23,30 +20,32 @@ pip install qdi-oqtopus
 
 ## Connecting
 
-`OqtopusQdiClient` is bound to exactly one OQTOPUS device (see
-docs/gap-analysis.md, question Q1) and takes only a device id at
-construction time:
+`OqtopusQdiClient` is scoped to one OQTOPUS connection, not one device,
+and takes no device id at construction time:
 
 ```python
 from qdi_oqtopus.client import OqtopusQdiClient
 
-client = OqtopusQdiClient("your-device-id")
+client = OqtopusQdiClient()
 ```
 
-Replace `"your-device-id"` with a device id from your OQTOPUS account, e.g.
-one listed via `OqtopusClient(config).list_devices()` (QDI itself has no
-multi-device listing operation; see docs/gap-analysis.md, question Q1).
+Every device-scoped operation below (`authenticate`, `send`, `monitor`,
+`receive`, `estimate_resources`) takes the target `device_id` explicitly
+instead; only `discover()` operates across every device on the account.
 
 ## Authenticating
 
 `authenticate()` must be called explicitly before any other method: no
-method authenticates on the caller's behalf (see docs/gap-analysis.md, gap
-G4). It requires `base_url` and `api_token` directly in
-`credentials_dict`. `oqtopus-client`'s own `OqtopusConfig` is a convenient
+method authenticates on the caller's behalf. It requires `base_url` and
+`api_token` directly in `credentials_dict`. `oqtopus-client`'s own `OqtopusConfig` is a convenient
 way to resolve these values from a config file or environment variables
 instead of hardcoding them; see [its getting started
 guide](https://oqtopus-client.readthedocs.io/en/latest/usage/getting_started/)
 for the full set of options.
+
+`authenticate()` also takes a `device_id`, to match qdi.h's
+`qdi_authenticate` signature, but OQTOPUS ignores it: token validation is
+platform-wide, not per device.
 
 ```python
 from oqtopus_client.services.config import OqtopusConfig
@@ -58,20 +57,24 @@ config = OqtopusConfig.from_file()
 # environment variables instead
 # config = OqtopusConfig.from_env()
 
-client.authenticate({"base_url": config.base_url, "api_token": config.api_token})
+device_id = "your-device-id"  # any id from client.discover()["devices"]
+client.authenticate(
+    device_id, {"base_url": config.base_url, "api_token": config.api_token}
+)
 ```
 
-## Discovering the device
+## Discovering devices
 
 ```python
-descriptor = client.discover()
-print(descriptor["is_ready"], descriptor["num_qubits"])
+devices = client.discover()["devices"]
+for device in devices:
+    print(device["device_id"], device["is_ready"], device["num_qubits"])
 ```
 
-`discover()`, like every other method, raises `QdiError` with
-`ERROR_UNAUTHORIZED` if `authenticate()` was not called first. `qdi.h`
-lists `discover` before `authenticate`; for this adapter the usable order
-is the reverse (see docs/gap-analysis.md, gap G4).
+`discover()` returns a mapping with a single `"devices"` key, holding one
+descriptor per available device. Like every other method, it raises
+`QdiError` with `ERROR_UNAUTHORIZED` if `authenticate()` was not called
+first.
 
 ## Submitting a task
 
@@ -90,7 +93,7 @@ cx q[0], q[1];
 c = measure q;
 """
 
-task_id = client.send(program, "openqasm3", shots=1000)
+task_id = client.send(device_id, program, "openqasm3", shots=1000)
 ```
 
 ## Polling for status
@@ -98,13 +101,25 @@ task_id = client.send(program, "openqasm3", shots=1000)
 ```python
 from qdi_oqtopus.types import QdiTaskStatus
 
-status, advisory = client.monitor(task_id)
+status, advisory = client.monitor(device_id, task_id)
 print(QdiTaskStatus(status).name, advisory)
 ```
 
-`advisory` always carries OQTOPUS's original 7-value status string under
-`"oqtopus_status"`, since QDI's 5-value `QdiTaskStatus` cannot represent it
-exactly (see docs/gap-analysis.md, gap G1).
+`status` is one of QDI's 5 `QdiTaskStatus` values, mapped from OQTOPUS's
+7-value job status as follows:
+
+| `QdiTaskStatus` | OQTOPUS status |
+|-----------------|-----------------|
+| `QUEUED`        | `registered`    |
+| `QUEUED`        | `submitted`     |
+| `QUEUED`        | `ready`         |
+| `EXECUTING`     | `running`       |
+| `COMPLETED`     | `succeeded`     |
+| `FAULTED`       | `failed`        |
+| `CANCELLED`     | `cancelled`     |
+
+`advisory` always carries OQTOPUS's original status string under
+`"oqtopus_status"`, so it is not lost by this mapping.
 
 ## Retrieving results
 
@@ -113,7 +128,7 @@ Once `monitor()` reports `COMPLETED`:
 ```python
 import json
 
-payload, result_type = client.receive(task_id)
+payload, result_type = client.receive(device_id, task_id)
 counts = json.loads(payload)
 print(result_type, counts)
 ```
@@ -122,14 +137,14 @@ print(result_type, counts)
 
 `estimate_resources()` always raises `QdiError` with
 `ERROR_ESTIMATION_FAILED`: OQTOPUS has no dry-run resource/cost estimation
-endpoint at all (see docs/gap-analysis.md, gap G2).
+endpoint at all.
 
 ```python
 from qdi_oqtopus.errors import QdiError
 from qdi_oqtopus.types import QdiStatus
 
 try:
-    client.estimate_resources(program, "openqasm3", shots=1000)
+    client.estimate_resources(device_id, program, "openqasm3", shots=1000)
 except QdiError as exc:
     assert exc.status == QdiStatus.ERROR_ESTIMATION_FAILED
 ```
