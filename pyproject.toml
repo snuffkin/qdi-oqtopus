@@ -9,6 +9,10 @@ dependencies = [
   "oqtopus-client>=1.1.7",
 ]
 
+[project.entry-points."qbraid.qdi_clients"]
+# Lets the qBraid SDK resolve this client by name: QdiProvider("oqtopus", credentials=...)
+oqtopus = "qdi_oqtopus.client:OqtopusQdiClient"
+
 [project.urls]
 documentation = "https://qdi-oqtopus.readthedocs.io/"
 repository = "https://github.com/snuffkin/qdi-oqtopus"
