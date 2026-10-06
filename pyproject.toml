@@ -6,12 +6,15 @@ readme = "README.md"
 requires-python = ">=3.11,<4.0"
 license = "Apache-2.0"
 dependencies = [
-  "oqtopus-client>=1.1.7",
+  "oqtopus-client>=1.2.0",
 ]
 
 [project.urls]
 documentation = "https://qdi-oqtopus.readthedocs.io/"
 repository = "https://github.com/snuffkin/qdi-oqtopus"
+
+[project.entry-points."qbraid.qdi_clients"]
+oqtopus = "qdi_oqtopus.client:OqtopusQdiClient"
 
 [build-system]
 requires = ["hatchling"]
