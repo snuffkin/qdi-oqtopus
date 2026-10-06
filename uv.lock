@@ -1163,7 +1163,7 @@ wheels = [
 
 [[package]]
 name = "oqtopus-client"
-version = "1.1.7"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1174,9 +1174,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/11/ceabf4503388ef867c56f5c508927d9475c53d8a888a8ee154f4b36c6a06/oqtopus_client-1.1.7.tar.gz", hash = "sha256:9bca7879c2560376ab9d022ecf9ec10106dc505aa69f4159b4fbe927fb749eb4", size = 63751, upload-time = "2026-07-29T08:00:08.365Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/20/87c59178d6d293bbfcc08a653eb73ece17ad3784bf68eaa6cc90c16407ff/oqtopus_client-1.2.0.tar.gz", hash = "sha256:4b74cbb9ec639e030de8454c07bd3eedb4e4a0127bc133dc0dbac4f4dc573e8f", size = 64613, upload-time = "2026-09-03T07:46:51.043Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/a0/5f4c4bdae8e30ac13b7730db58b63c6de90f8595fbfe5b7d98620f200a34/oqtopus_client-1.1.7-py3-none-any.whl", hash = "sha256:11313d6860d6472efea5cfa4d4981c21061229c8108611dc95188f00460f5856", size = 129282, upload-time = "2026-07-29T08:00:06.963Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/f3/bd233dc78b6269735dcb794654848f088e6b874f2a1d9835ced71581398e/oqtopus_client-1.2.0-py3-none-any.whl", hash = "sha256:8b512615f9e1e37ff6b4b48c696b05cef08a8457bc65fae9ce6b8fe11c6ee1a5", size = 130169, upload-time = "2026-09-03T07:46:49.46Z" },
 ]
 
 [[package]]
@@ -1806,7 +1806,7 @@ test = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "oqtopus-client", specifier = ">=1.1.7" }]
+requires-dist = [{ name = "oqtopus-client", specifier = ">=1.2.0" }]
 
 [package.metadata.requires-dev]
 dev = [
